@@ -1,4 +1,4 @@
-from src.core.database import Base
+from src.core.base import Base
 from sqlalchemy.orm import Mapped, mapped_column
 import enum
 from sqlalchemy import String, ForeignKey, Text, text, Float, Integer, Enum, Index, DateTime, func

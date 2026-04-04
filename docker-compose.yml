@@ -1,19 +1,77 @@
 services:
+  migrations:
+    build: ./backend
+    container_name: my_local_migrations
+    command: >
+      sh -c "alembic upgrade head"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    depends_on:
+      db:
+        condition: service_healthy 
+    networks:
+      - app_network
+    restart: "no"  
+    volumes:
+      - ./backend/src:/app/src:ro
+      - ./backend/alembic:/app/alembic:ro
+      - ./backend/alembic.ini:/app/alembic.ini:ro
+    working_dir: /app
+
+  db:
+    image: postgres:15-alpine
+    container_name: localscript_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"  
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app_network
+
   ollama:
     image: ollama/ollama:latest
     ports: ["11434:11434"]
     volumes: ["ollama_data:/root/.ollama"]
     environment:
       - OLLAMA_HOST=0.0.0.0
+    networks:
+      - app_network
 
   backend:
     build: ./backend
     ports: ["8000:8000"]
-    volumes: ["./backend:/app"]
-    command: uvicorn app:app --host 0.0.0.0 --reload
+    volumes:
+      - ./backend:/app
+      - /app/__pycache__
+    command: uvicorn src.main:app --host 0.0.0.0 --reload
     environment:
-      - OLLAMA_URL=http://ollama:11434  
-    depends_on: ["ollama"]
+      - OLLAMA_URL=http://ollama:11434
+      - SECRET_KEY=&{SECRET_KEY}
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    depends_on:
+      db:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    networks:
+      - app_network
+    restart: unless-stopped
+
+networks:
+  app_network:
+    driver: bridge
 
 volumes:
   ollama_data:
+  postgres_data:

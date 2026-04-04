@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from src.core.database import engine
 from sqlalchemy import text
 from src.core.config import settings
+from src.models.generation import CodeGeneration
 
 
 setup_logging(level=settings.LOG_LEVEL)

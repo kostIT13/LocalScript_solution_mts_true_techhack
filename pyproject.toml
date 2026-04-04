@@ -11,5 +11,6 @@ dependencies = [
     "fastapi>=0.135.2",
     "httpx>=0.28.1",
     "langchain>=1.2.14",
+    "psycopg2-binary>=2.9.11",
     "sqlalchemy>=2.0.48",
 ]
