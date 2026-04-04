@@ -1,0 +1,19 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    ports: ["11434:11434"]
+    volumes: ["ollama_data:/root/.ollama"]
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+
+  backend:
+    build: ./backend
+    ports: ["8000:8000"]
+    volumes: ["./backend:/app"]
+    command: uvicorn app:app --host 0.0.0.0 --reload
+    environment:
+      - OLLAMA_URL=http://ollama:11434  # Имя сервиса внутри Docker-сети
+    depends_on: ["ollama"]
+
+volumes:
+  ollama_data:
