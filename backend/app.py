@@ -7,13 +7,6 @@ app = FastAPI()
 
 @app.post("/api/generate")
 async def generate(task: str = Body(..., embed=True)):
-    """
-    Генерирует Lua-код и возвращает ТОЛЬКО код в формате SSE.
-    Формат ответа:
-      {"type": "token", "data": "return"}
-      {"type": "token", "data": " 42"}
-      {"type": "done", "code": "return 42"}
-    """
     async def event_stream():
         timeout = 120.0  # Достаточно для загрузки модели + генерации
         
