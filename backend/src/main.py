@@ -9,6 +9,7 @@ from src.models.generation import CodeGeneration
 from src.models.user import User
 from src.api.generate.endpoints import router as generate_router
 from src.api.history.endpoints import router as history_router
+from src.api.auth.endpoints import router as user_router
 
 
 setup_logging(level=settings.LOG_LEVEL)
@@ -34,3 +35,4 @@ app = FastAPI(title="LocalScript", lifespan=lifespan, description="AI-агент
 
 app.include_router(generate_router, prefix="/api/v1")
 app.include_router(history_router, prefix="/api/v1")
+app.include_router(user_router, prefix="/api/v1")
