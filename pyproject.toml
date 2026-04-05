@@ -12,7 +12,9 @@ dependencies = [
     "httpx>=0.28.1",
     "langchain>=1.2.14",
     "psycopg2-binary>=2.9.11",
+    "pydantic[email]>=2.12.5",
     "python-dotenv>=1.2.2",
     "python-jose>=3.5.0",
+    "python-multipart>=0.0.22",
     "sqlalchemy>=2.0.48",
 ]
