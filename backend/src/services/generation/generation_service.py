@@ -1,16 +1,16 @@
 import logging
 from typing import Optional, List, Dict, Any
-from src.services.generation.base import GenerationRepository
 from src.models.generation import CodeGeneration, GenerationStatus
-import uuid
+from sqlalchemy.ext.asyncio import AsyncSession
+from src.services.generation.repository import SQLAlchemyGenerationRepository
 
 
 logger = logging.getLogger(__name__)
 
 
 class GenerationService:
-    def __init__(self, repository: GenerationRepository):
-        self.repository = repository
+    def __init__(self, db: AsyncSession):
+        self.repository = SQLAlchemyGenerationRepository(db)
 
     async def create_generation(
         self,

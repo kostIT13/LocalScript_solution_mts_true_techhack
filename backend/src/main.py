@@ -32,5 +32,5 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="LocalScript", lifespan=lifespan, description="AI-агент для генерации Lua-кода", debug=settings.DEBUG)
 
-app.include_router(generate_router)
-app.include_router(history_router)
+app.include_router(generate_router, prefix="/api/v1")
+app.include_router(history_router, prefix="/api/v1")

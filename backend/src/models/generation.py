@@ -1,9 +1,13 @@
 from src.core.database import Base
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 import enum
 from sqlalchemy import String, ForeignKey, Text, Float, Integer, Enum, Index, DateTime, func
 from datetime import datetime
 import uuid
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.models.user import User
 
 
 class GenerationStatus(str, enum.Enum):
@@ -20,7 +24,7 @@ class CodeGeneration(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     task: Mapped[str] = mapped_column(Text, nullable=False, comment='Запрос пользователя')
-    generated_code: Mapped[str] = mapped_column(Text, nullable=False, comment='Сгенерированный код')
+    generated_code: Mapped[str] = mapped_column(Text, nullable=True, comment='Сгенерированный код')
     language: Mapped[str] = mapped_column(String, default='lua', comment='Язык кода')
     model_name: Mapped[str] = mapped_column(String(50), default="qwen2.5-coder:1.5b", comment="Использованная LLM")
     temperature: Mapped[float] = mapped_column(Float, default=0.2, comment="Температура генерации")
@@ -50,6 +54,11 @@ class CodeGeneration(Base):
         Index("idx_user_created", "user_id", "created_at"),
         Index("idx_status", "validation_status"),
         Index("idx_model", "model_name"),
+    )
+    
+    user: Mapped["User"] = relationship(
+        "User", 
+        back_populates="generations"  # ← Должно точно совпадать с именем в User
     )
     
     @property
