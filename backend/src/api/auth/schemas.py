@@ -1,4 +1,3 @@
-# backend/src/api/auth/schemas.py
 from pydantic import BaseModel, EmailStr, ConfigDict, Field
 from datetime import datetime
 
@@ -30,3 +29,5 @@ class UserResponse(BaseModel):
     is_active: bool
 
     model_config = ConfigDict(from_attributes=True)
+
+    
