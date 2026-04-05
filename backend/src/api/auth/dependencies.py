@@ -14,7 +14,6 @@ async def get_user_service(db: AsyncSession = Depends(get_db)):
 
 UserServiceDependency = Annotated[UserService, Depends(get_user_service)]
 
-
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
 
