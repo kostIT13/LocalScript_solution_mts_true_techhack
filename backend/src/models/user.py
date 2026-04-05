@@ -3,6 +3,7 @@ from sqlalchemy import String, Boolean, DateTime, func
 from datetime import datetime
 from typing import List, TYPE_CHECKING
 from src.core.database import Base
+import uuid
 
 if TYPE_CHECKING:
     from src.models.generation import CodeGeneration
@@ -13,7 +14,8 @@ class User(Base):
     id: Mapped[str] = mapped_column(
         String(36), 
         primary_key=True, 
-        index=True
+        index=True,
+        default=lambda: str(uuid.uuid4())
     )
     
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
