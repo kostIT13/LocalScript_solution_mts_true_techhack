@@ -13,5 +13,6 @@ dependencies = [
     "langchain>=1.2.14",
     "psycopg2-binary>=2.9.11",
     "python-dotenv>=1.2.2",
+    "python-jose>=3.5.0",
     "sqlalchemy>=2.0.48",
 ]
