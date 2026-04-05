@@ -3,7 +3,6 @@ from sqlalchemy.orm import declarative_base
 from typing import AsyncGenerator
 from src.core.config import settings
 import logging
-from src.core.base import Base
 
 
 logger = logging.getLogger(__name__)
@@ -15,6 +14,8 @@ engine = create_async_engine(
     )
 
 async_session_maker = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+
+Base = declarative_base()
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

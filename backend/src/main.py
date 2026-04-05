@@ -6,6 +6,7 @@ from src.core.database import engine
 from sqlalchemy import text
 from src.core.config import settings
 from src.models.generation import CodeGeneration
+from src.models.user import User
 
 
 setup_logging(level=settings.LOG_LEVEL)

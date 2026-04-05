@@ -806,6 +806,7 @@ dependencies = [
     { name = "httpx" },
     { name = "langchain" },
     { name = "psycopg2-binary" },
+    { name = "python-dotenv" },
     { name = "sqlalchemy" },
 ]
 
@@ -818,6 +819,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "langchain", specifier = ">=1.2.14" },
     { name = "psycopg2-binary", specifier = ">=2.9.11" },
+    { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "sqlalchemy", specifier = ">=2.0.48" },
 ]
 

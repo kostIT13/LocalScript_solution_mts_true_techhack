@@ -7,7 +7,7 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     depends_on:
       db:
         condition: service_healthy 
@@ -57,7 +57,7 @@ services:
     command: uvicorn src.main:app --host 0.0.0.0 --reload
     environment:
       - OLLAMA_URL=http://ollama:11434
-      - SECRET_KEY=&{SECRET_KEY}
+      - SECRET_KEY=${SECRET_KEY}
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     depends_on:
       db:
