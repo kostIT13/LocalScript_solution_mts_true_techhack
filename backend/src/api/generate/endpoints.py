@@ -19,7 +19,7 @@ async def generate_code(
         temperature=req.temperature,
         context_length=req.context_length
     )
-
+ 
     async def event_stream():
         start_time = time.time()
         full_code = ""
