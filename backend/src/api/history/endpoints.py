@@ -3,9 +3,9 @@ from src.api.generate.schemas import GenerationListResponse
 from src.api.generate.dependencies import GenerationServiceDependency
 
 
-router = APIRouter()
+router = APIRouter(prefix='/history', tags=["History"])
 
-@router.get("/", response_model=GenerationListResponse, summary="История генераций пользователя")
+@router.get("/", response_model=GenerationListResponse, summary="User generation history")
 async def get_history(
     service: GenerationServiceDependency,
     user_id: str = "dev-user-temp",

@@ -5,7 +5,7 @@ from src.api.generate.dependencies import GenerationServiceDependency
 import json, time
 
 
-router = APIRouter()
+router = APIRouter(prefix='/generations', tags=["Generations"])
 
 @router.post("/generate", status_code=201)
 async def generate_code(
