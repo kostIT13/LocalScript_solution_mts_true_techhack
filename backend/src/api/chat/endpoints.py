@@ -1,10 +1,15 @@
 from fastapi import APIRouter, status, Depends, Path, HTTPException
 from src.api.auth.dependencies import CurrentUserDependency
 from src.api.chat.dependencies import ChatServiceDependency, ChatDependency
-from src.api.chat import ChatBaseResponse, ChatCreate, ChatListResponse, ChatMessageRequest, ChatMessageResponse, ChatResponse, ChatUpdate, MessageResponse
+from src.api.chat.schemas import ChatBaseResponse, ChatCreate, ChatListResponse, ChatMessageRequest, ChatMessageResponse, ChatResponse, ChatUpdate, MessageResponse
 from typing import List
 from src.models.user import User
 from src.models.message import MessageRole
+from src.services.llm.promts import LUA_AGENT_SYSTEM_PROMPT
+from src.services.llm.generator import stream_chat
+import re
+from fastapi.responses import StreamingResponse
+import json
 
 
 router = APIRouter(prefix='/chats', tags=["Chats"])
@@ -94,3 +99,54 @@ async def send_message(
         chat_id=msg.chat_id,
         created_at=msg.created_at
     )
+
+@router.post('/{chat_id}/message/stream', response_model=None)
+async def send_message_stream(
+    data: ChatMessageRequest,
+    chat: ChatDependency,
+    service: ChatServiceDependency,
+    current_user: User = CurrentUserDependency
+):
+    await service.add_message(
+        chat_id=chat.id,
+        user_id=current_user.id,
+        role="user",
+        content=data.query
+    )
+    async def event_stream():
+        history = await service.get_messages(chat.id, current_user.id, limit=10)
+        history_dicts = [
+            {"role": m.role.value if hasattr(m.role, 'value') else m.role, "content": m.content}
+            for m in history
+        ]
+        context = "\n".join([f"{m['role']}: {m['content']}" for m in history_dicts[-5:]])
+        full_prompt = f"{context}\nuser: {data.query}\nassistant:"
+        
+        full_response = ""
+        try:
+            async for token in stream_chat(
+                prompt=full_prompt,
+                system_prompt=LUA_AGENT_SYSTEM_PROMPT,
+                temperature=data.temperature,
+                num_ctx=data.context_length
+            ):
+                full_response += token
+                yield f" {json.dumps({'type': 'token', 'data': token}, ensure_ascii=False)}\n\n"
+            
+            code_match = re.search(r"```lua\s*(.*?)\s*```", full_response, re.DOTALL)
+            code_extract = code_match.group(1).strip() if code_match else None
+            
+            await service.add_message(
+                chat_id=chat.id,
+                user_id=current_user.id,
+                role="assistant",
+                content=full_response,
+                metadata_={"sources": [], "code_extract": code_extract}
+            )
+            
+            yield f" {json.dumps({'type': 'done', 'code': code_extract}, ensure_ascii=False)}\n\n"
+            
+        except Exception as e:
+            yield f" {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
+    
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
