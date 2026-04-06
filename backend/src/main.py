@@ -9,6 +9,7 @@ from src.models.generation import CodeGeneration
 from src.models.user import User
 from src.models.chat import Chat
 from src.models.message import Message
+from src.models.document import Document
 from src.api.generate.endpoints import router as generate_router
 from src.api.history.endpoints import router as history_router
 from src.api.auth.endpoints import router as user_router
