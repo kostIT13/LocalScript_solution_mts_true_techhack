@@ -6,6 +6,7 @@ from src.core.database import Base
 import uuid
 
 if TYPE_CHECKING:
+    from src.models.chat import Chat
     from src.models.generation import CodeGeneration
 
 
@@ -29,6 +30,13 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), onupdate=func.now())
     
+    chats: Mapped[List["Chat"]] = relationship(
+        "Chat", 
+        back_populates="user",  # ← Должно точно совпадать с именем в Chat
+        cascade="all, delete-orphan",  # При удалении юзера — удалить его чаты
+        lazy="selectin"  # Оптимизация: подгружать чаты сразу при запросе
+    )
+
     generations: Mapped[List["CodeGeneration"]] = relationship(
         "CodeGeneration", 
         back_populates="user", 

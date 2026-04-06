@@ -105,7 +105,7 @@ async def send_message_stream(
     data: ChatMessageRequest,
     chat: ChatDependency,
     service: ChatServiceDependency,
-    current_user: User = CurrentUserDependency
+    current_user: CurrentUserDependency
 ):
     await service.add_message(
         chat_id=chat.id,

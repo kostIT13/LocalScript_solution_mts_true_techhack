@@ -12,7 +12,7 @@ class SQLAlchemyUserRepository(UserRepository):
     async def get_by_id(self, user_id: str) -> Optional[User]:
         query = select(User).where(User.id==user_id)
         result = await self.session.execute(query)
-        return result 
+        return result.scalar_one_or_none() 
     
     async def get_all(self, **filters) -> List[User]:
         query = select(User)
