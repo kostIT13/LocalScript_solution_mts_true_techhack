@@ -10,6 +10,7 @@ from src.models.generation import GenerationStatus
 from src.models.user import User
 from src.models.chat import Chat
 from src.models.message import Message
+from src.models.document import Document
 
 from src.core.config import settings
 
