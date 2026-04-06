@@ -26,7 +26,7 @@ async def stream_chat(
     model: Optional[str] = None
 ) -> AsyncGenerator[str, None]:
     llm = ChatOllama(
-        model=model or settings.OLLAMA_MODEL,
+        model=model or settings.OLLAMA_LLM_MODEL,
         temperature=temperature,
         num_ctx=num_ctx,
         base_url=settings.OLLAMA_HOST.rstrip("/"),
@@ -40,4 +40,4 @@ async def stream_chat(
     messages.append(HumanMessage(content=prompt))
     
     async for token in chain.astream(messages):
-        yield token  # Чистая строка-токен
+        yield token  
