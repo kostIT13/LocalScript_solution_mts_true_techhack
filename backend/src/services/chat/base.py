@@ -13,7 +13,7 @@ class ChatRepository(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    async def get_user_chats(self, user_id: str) -> List[Chat]:
+    async def get_user_chats(self, user_id: str, limit: int = 20) -> List[Chat]:
         raise NotImplementedError
     
     @abstractmethod
