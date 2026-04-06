@@ -36,7 +36,6 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    """Общая логика миграций для онлайн-режима."""
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
@@ -47,7 +46,6 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_async_migrations() -> None:
-    """Запуск асинхронных миграций."""
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
@@ -62,7 +60,6 @@ async def run_async_migrations() -> None:
 
 
 def run_migrations_online() -> None:
-    """Точка входа для онлайн-миграций."""
     asyncio.run(run_async_migrations())
 
 
