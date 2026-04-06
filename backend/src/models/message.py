@@ -1,10 +1,11 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.core.database import Base
-from sqlalchemy import String, ForeignKey, Text, Boolean, func, DateTime, Enum
+from sqlalchemy import String, ForeignKey, Text, Boolean, func, DateTime, Enum as SQLEnum
 from typing import Optional, TYPE_CHECKING, List
 from sqlalchemy.dialects.postgresql import JSONB
 from datetime import datetime
 import uuid
+from enum import Enum  
 
 if TYPE_CHECKING:
     from src.models.chat import Chat
@@ -24,7 +25,13 @@ class Message(Base):
         nullable=False, 
         index=True
     )
-    role: Mapped[MessageRole] = mapped_column(Enum(MessageRole), nullable=False, index=True)
+    
+    role: Mapped[str] = mapped_column(
+        SQLEnum("user", "assistant", "system", name="message_role"),
+        nullable=False, 
+        index=True
+    )
+    
     content: Mapped[str] = mapped_column(Text, nullable=False)
     metadata_: Mapped[Optional[dict]] = mapped_column(JSONB, default=lambda: {}, nullable=True)
     is_starred: Mapped[bool] = mapped_column(Boolean, default=False)

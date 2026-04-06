@@ -7,9 +7,12 @@ from sqlalchemy import text
 from src.core.config import settings
 from src.models.generation import CodeGeneration
 from src.models.user import User
+from src.models.chat import Chat
+from src.models.message import Message
 from src.api.generate.endpoints import router as generate_router
 from src.api.history.endpoints import router as history_router
 from src.api.auth.endpoints import router as user_router
+from src.api.chat.endpoints import router as chat_router
 
 
 setup_logging(level=settings.LOG_LEVEL)
@@ -33,6 +36,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="LocalScript", lifespan=lifespan, description="AI-агент для генерации Lua-кода", debug=settings.DEBUG)
 
+
 app.include_router(generate_router, prefix="/api/v1")
 app.include_router(history_router, prefix="/api/v1")
 app.include_router(user_router, prefix="/api/v1")
+app.include_router(chat_router, prefix="/api/v1")

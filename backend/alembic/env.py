@@ -8,6 +8,8 @@ from alembic import context
 from src.core.database import Base
 from src.models.generation import GenerationStatus  
 from src.models.user import User
+from src.models.chat import Chat
+from src.models.message import Message
 
 from src.core.config import settings
 

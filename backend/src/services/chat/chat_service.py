@@ -3,7 +3,8 @@ from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from src.services.chat.base import ChatRepository
-from src.models.chat import Chat, Message
+from src.models.chat import Chat
+from src.models.message import Message
 from src.services.chat.repository import SQLAlchemyChatRepository
 
 

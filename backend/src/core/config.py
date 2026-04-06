@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
-from pathlib import Path  # 👈 убедись, что импорт есть
+from pathlib import Path  
 
 
 class Settings(BaseSettings):
@@ -15,10 +15,8 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     model_config = SettingsConfigDict(
-        # 👇 Путь от config.py до корня проекта:
-        # config.py → src → backend → LocalScript (корень) → .env
         env_file=Path(__file__).resolve().parent.parent.parent.parent / ".env",
-        #                                           ^^^^^^^ добавили ещё один .parent
+        #                                         
         case_sensitive=False,
         extra="ignore"
     )
