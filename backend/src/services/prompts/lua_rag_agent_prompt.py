@@ -1,5 +1,5 @@
 from typing import List, Optional
-from src.services.rag.rag_service import RAGChunk
+from src.services.rag.rag_chunk import RAGChunk
 
 
 LUA_RAG_AGENT_PROMPT = """Ты — экспертный ассистент по генерации кода на Lua с доступом к документации.

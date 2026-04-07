@@ -5,7 +5,7 @@ from src.api.chat.schemas import ChatBaseResponse, ChatCreate, ChatListResponse,
 from typing import List
 from src.models.user import User
 from src.models.message import MessageRole
-from src.services.llm.promts import LUA_AGENT_SYSTEM_PROMPT
+from src.services.prompts.lua_agent_system_prompt import LUA_AGENT_SYSTEM_PROMPT
 from src.services.llm.generator import stream_chat
 import re
 from fastapi.responses import StreamingResponse

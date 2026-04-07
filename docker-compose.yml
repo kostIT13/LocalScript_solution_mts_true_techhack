@@ -1,9 +1,11 @@
+# docker-compose.yml (в корне проекта)
 services:
   migrations:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: my_local_migrations
-    command: >
-      sh -c "alembic upgrade head"
+    command: ["uv", "run", "alembic", "upgrade", "head"]
     env_file:
       - .env
     environment:
@@ -18,6 +20,7 @@ services:
       - ./backend/src:/app/src:ro
       - ./backend/alembic:/app/alembic:ro
       - ./backend/alembic.ini:/app/alembic.ini:ro
+      - /app/.venv
     working_dir: /app
 
   db:
@@ -30,7 +33,7 @@ services:
     ports:
       - "5432:5432"  
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data  # ✅ Исправлено
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -42,19 +45,23 @@ services:
   ollama:
     image: ollama/ollama:latest
     ports: ["11434:11434"]
-    volumes: ["ollama_data:/root/.ollama"]
+    volumes:
+      - ollama_data:/root/.ollama  # ✅ Исправлено
     environment:
       - OLLAMA_HOST=0.0.0.0
     networks:
       - app_network
 
   backend:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     ports: ["8000:8000"]
     volumes:
       - ./backend:/app
+      - /app/.venv
       - /app/__pycache__
-    command: uvicorn src.main:app --host 0.0.0.0 --reload
+    command: ["uv", "run", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     environment:
       - OLLAMA_URL=http://ollama:11434
       - SECRET_KEY=${SECRET_KEY}
@@ -73,5 +80,5 @@ networks:
     driver: bridge
 
 volumes:
-  ollama_data:
-  postgres_data:
+  ollama_data:   # ✅ Добавлено двоеточие
+  postgres_data: # ✅ Добавлено двоеточие
