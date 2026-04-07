@@ -3,6 +3,7 @@ FROM python:3.11-slim
 RUN apt-get update && apt-get install -y \
     lua5.4 \
     curl \
+    docker.io \
     && rm -rf /var/lib/apt/lists/* \
     && ln -sf /usr/bin/luac5.4 /usr/bin/luac 2>/dev/null || true
 
@@ -10,11 +11,10 @@ RUN luac -v || echo "luac не найден, валидация кода буд�
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir uv
+RUN pip install --no-cache-dir uv --index-url https://pypi.tuna.tsinghua.edu.cn/simple
 
 COPY pyproject.toml uv.lock ./
-
-RUN uv sync --frozen --no-dev --no-editable
+RUN uv sync --frozen --no-dev --no-editable --index-url https://pypi.tuna.tsinghua.edu.cn/simple
 
 COPY . .
 

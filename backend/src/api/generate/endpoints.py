@@ -1,13 +1,22 @@
-from fastapi import APIRouter
+# backend/src/api/generate/endpoints.py
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from src.api.generate.schemas import GenerateRequest
 from src.api.generate.dependencies import GenerationServiceDependency
 from src.services.llm.generator import stream_chat 
-from src.services.prompts.lua_agent_system_prompt import LUA_AGENT_SYSTEM_PROMPT
-import json, time
+from src.services.prompts.lua_agent_system_prompt import LUA_AGENT_SYSTEM_PROMPT  
+from src.services.sandbox.sandbox_service import SandboxService, SandboxResult  
+import json
+import time
+import re
+import logging
 
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix='/generations', tags=["Generations"])
+
+sandbox_service = SandboxService(image_name="localscript-sandbox")
 
 
 @router.post("/generate", status_code=201)
@@ -25,10 +34,10 @@ async def generate_code(
  
     async def event_stream():
         start_time = time.time()
-        full_code = ""
+        full_response = ""  
         
         try:
-            prompt = f"Write Lua code for: {req.task}. ONLY code in ```lua block, no explanations."
+            prompt = f"Task: {req.task}\n\nWrite ONLY valid Lua code. Return code in ```lua ... ``` block. No explanations, no markdown outside the code block."
             
             async for token in stream_chat(
                 prompt=prompt,
@@ -36,27 +45,50 @@ async def generate_code(
                 temperature=req.temperature,
                 num_ctx=req.context_length
             ):
-                full_code += token
-                yield f" {json.dumps({'type': 'token', 'data': token}, ensure_ascii=False)}\n\n"
+                full_response += token
+                yield f"data: {json.dumps({'type': 'token', 'data': token}, ensure_ascii=False)}\n\n"
                     
-            import re
-            code_match = re.search(r"```lua\s*(.*?)\s*```", full_code, re.DOTALL)
-            clean_code = code_match.group(1).strip() if code_match else full_code.strip()
+            code_match = re.search(r"```lua\s*(.*?)\s*```", full_response, re.DOTALL)
+            clean_code = code_match.group(1).strip() if code_match else full_response.strip()
             
-            await service.update_generation(record.id, {
+            sandbox_result = None
+            if req.run_test and clean_code:
+                logger.info(f"Запускаю Sandbox для кода: {clean_code[:100]}...")
+                
+                sandbox_result: SandboxResult = sandbox_service.execute(
+                    code=clean_code,
+                    timeout=5  
+                )
+                
+                yield f"data: {json.dumps({'type': 'sandbox_start'}, ensure_ascii=False)}\n\n"
+            
+            update_data = {
                 "generated_code": clean_code,
                 "validation_status": "success",
                 "latency_ms": int((time.time() - start_time) * 1000),
-                "tokens_completion": len(full_code.split()) 
-            })
+                "tokens_completion": len(full_response.split())
+            }
+            if sandbox_result:
+                update_data["sandbox_output"] = sandbox_result.output
+                update_data["sandbox_error"] = sandbox_result.error
+                update_data["sandbox_success"] = sandbox_result.success
             
-            yield f" {json.dumps({'type': 'done', 'code': clean_code}, ensure_ascii=False)}\n\n"
+            await service.update_generation(record.id, update_data)
+            
+            final_payload = {
+                "type": "done",
+                "code": clean_code,
+                "sandbox_result": sandbox_result.model_dump() if sandbox_result else None
+            }
+            yield f"data: {json.dumps(final_payload, ensure_ascii=False)}\n\n"
             
         except Exception as e:
+            logger.error(f"Generation error: {e}", exc_info=True)
+            
             await service.update_generation(record.id, {
                 "validation_status": "failed",
                 "validation_log": str(e)
             })
-            yield f" {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
