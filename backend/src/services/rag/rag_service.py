@@ -9,7 +9,7 @@ from src.services.rag.chroma_client import chroma_client
 from src.services.rag.embedding_service import embedding_service
 from src.services.rag.document_processor import document_processor
 from src.services.rag.ollama_client import ollama_client
-from src.services.promts.lua_rag_agent_promt import build_rag_prompt
+from src.services.prompts.lua_rag_agent_prompt import build_rag_prompt
 from src.services.document.repository import SQLAlchemyDocumentRepository
 from src.services.rag.rag_chank import RAGChunk
 
