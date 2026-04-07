@@ -8,6 +8,7 @@ import uuid
 if TYPE_CHECKING:
     from src.models.chat import Chat
     from src.models.generation import CodeGeneration
+    from src.models.document import Document
 
 
 class User(Base):
@@ -40,6 +41,12 @@ class User(Base):
     generations: Mapped[List["CodeGeneration"]] = relationship(
         "CodeGeneration", 
         back_populates="user", 
+        cascade="all, delete-orphan"
+    )
+
+    documents: Mapped[List["Document"]] = relationship(
+        "Document",
+        back_populates="user",  
         cascade="all, delete-orphan"
     )
     

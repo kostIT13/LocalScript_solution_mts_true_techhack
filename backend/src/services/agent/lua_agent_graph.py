@@ -146,7 +146,7 @@ def router(state: AgentState) -> Literal["generate", "end"]:
         return "generate"
     
     if has_error:
-        logger.warning(f"⚠️ Достигнут лимит попыток ({attempts}), возвращаю последний код")
+        logger.warning(f"Достигнут лимит попыток ({attempts}), возвращаю последний код")
     
     return "end"
 
