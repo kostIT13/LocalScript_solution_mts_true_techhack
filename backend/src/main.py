@@ -14,6 +14,7 @@ from src.api.generate.endpoints import router as generate_router
 from src.api.history.endpoints import router as history_router
 from src.api.auth.endpoints import router as user_router
 from src.api.chat.endpoints import router as chat_router
+from src.api.document.endpoints import router as document_router
 
 
 setup_logging(level=settings.LOG_LEVEL)
@@ -37,8 +38,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="LocalScript", lifespan=lifespan, description="AI-агент для генерации Lua-кода", debug=settings.DEBUG)
 
-
 app.include_router(generate_router, prefix="/api/v1")
 app.include_router(history_router, prefix="/api/v1")
 app.include_router(user_router, prefix="/api/v1")
 app.include_router(chat_router, prefix="/api/v1")
+app.include_roture(document_router, prefix="/api/v1")
