@@ -1,6 +1,11 @@
 local cjson_ok, cjson = pcall(require, "cjson")
 if not cjson_ok then
-    io.write('{"success":false,"error":"Module cjson not found"}\n')
+    io.write(cjson.encode({
+        success = false,
+        error = "Module cjson not found",
+        execution_time = 0
+    }) .. "\n")
+    io.flush()
     os.exit(1)
 end
 
@@ -24,8 +29,10 @@ safe_env.unpack = table.unpack or unpack
 safe_env.math = math
 safe_env.string = string
 safe_env.table = table
+
 safe_env.os = { clock = os.clock, date = os.date, time = os.time, difftime = os.difftime }
 safe_env.io = { write = io.write, flush = io.flush }
+
 safe_env.package = nil
 safe_env.debug = nil
 safe_env.coroutine = nil
@@ -35,7 +42,11 @@ safe_env.require = nil
 
 local code = io.read("*a")
 if not code or code == "" then
-    io.write(cjson.encode({success = false, error = "Empty code"}))
+    io.write(cjson.encode({
+        success = false,
+        error = "Empty code",
+        execution_time = 0
+    }) .. "\n")
     io.flush()
     return
 end
@@ -43,11 +54,11 @@ end
 local start_time = os.clock()
 local TIMEOUT = tonumber(os.getenv("LUA_SANDBOX_TIMEOUT")) or 5
 
-debug.sethook(function()
+debug.sethook(function(event)
     if os.clock() - start_time > TIMEOUT then
         error("Timeout exceeded (" .. TIMEOUT .. "s)", 2)
     end
-end, "", 1000)
+end, "", 1000) 
 
 local result, err = pcall(function()
     local func, compile_err = load(code, "sandbox", "t", safe_env)
@@ -61,7 +72,7 @@ local output = {
     success = result,
     result = result and "OK" or nil,
     error = err and tostring(err) or nil,
-    execution_time = math.min(os.clock() - start_time, TIMEOUT),
+    execution_time = math.min(os.clock() - start_time, TIMEOUT), 
 }
 
 io.write(cjson.encode(output) .. "\n")
