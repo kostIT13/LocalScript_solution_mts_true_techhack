@@ -1,8 +1,7 @@
-# backend/src/services/sandbox/sandbox_service.py
 import logging
 import json
 import docker
-import base64  # 🔥 Добавь этот импорт
+import base64 
 from typing import Optional
 from pydantic import BaseModel
 
@@ -19,9 +18,9 @@ class SandboxService:
         self.image_name = image_name
         try:
             self.client = docker.from_env()
-            logger.info("✅ SandboxService подключён к Docker")
+            logger.info("SandboxService подключён к Docker")
         except Exception as e:
-            logger.error(f"❌ Не удалось подключиться к Docker: {e}")
+            logger.error(f"Не удалось подключиться к Docker: {e}")
             self.client = None
 
     def execute(self, code: str, timeout: int = 5) -> SandboxResult:
@@ -29,25 +28,21 @@ class SandboxService:
             return SandboxResult(success=False, error="Docker client not available")
         
         try:
-            # 🔥 Кодируем код в Base64 — НИКАКИХ проблем с кавычками, $, !, \n
             encoded_code = base64.b64encode(code.encode('utf-8')).decode('ascii')
             
-            # 🔥 Декодируем внутри контейнера и передаём в Lua
-            # base64 -d работает в Alpine по умолчанию
             command = f'sh -c "echo \\"{encoded_code}\\" | base64 -d | lua5.4 /sandbox_runner.lua"'
             
             result = self.client.containers.run(
                 image=self.image_name,
                 command=command,
-                remove=True,              # --rm аналог
-                mem_limit="64m",          # Ограничение памяти
-                nano_cpus=int(0.5 * 1e9), # 0.5 CPU ядра
-                network_disabled=True,    # 🔥 Блокируем сеть
+                remove=True,          
+                mem_limit="64m",        
+                nano_cpus=int(0.5 * 1e9),
+                network_disabled=True,    
                 stdout=True,
                 stderr=True,
             )
             
-            # Парсим JSON-ответ
             output = result.decode('utf-8').strip()
             try:
                 data = json.loads(output)
@@ -56,11 +51,11 @@ class SandboxService:
                 return SandboxResult(success=False, error=output)
                 
         except docker.errors.ImageNotFound:
-            logger.error(f"❌ Образ {self.image_name} не найден")
+            logger.error(f"Образ {self.image_name} не найден")
             return SandboxResult(
                 success=False, 
                 error=f"Image '{self.image_name}' not found. Run: docker-compose build --no-cache sandbox"
             )
         except Exception as e:
-            logger.error(f"❌ Sandbox error: {type(e).__name__}: {e}", exc_info=True)
+            logger.error(f"Sandbox error: {type(e).__name__}: {e}", exc_info=True)
             return SandboxResult(success=False, error=f"{type(e).__name__}: {str(e)}")
