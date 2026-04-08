@@ -99,12 +99,29 @@ services:
     networks:
       - app_network
     restart: no
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: my_chroma
+    ports:
+      - "8001:8000" 
+    volumes:
+      - chroma_data:/chroma/chroma 
+    networks:
+      - app_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:8000/api/v1/heartbeat || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
 networks:
   app_network:
     driver: bridge
 
 volumes:
+  chroma_data:
   ollama_data:  
   postgres_data:
 
