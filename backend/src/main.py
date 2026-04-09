@@ -15,6 +15,7 @@ from src.api.history.endpoints import router as history_router
 from src.api.auth.endpoints import router as user_router
 from src.api.chat.endpoints import router as chat_router
 from src.api.document.endpoints import router as document_router
+from src.api.chat.endpoints_simple import router as simple_router
 
 
 setup_logging(level=settings.LOG_LEVEL)
@@ -43,3 +44,4 @@ app.include_router(history_router, prefix="/api/v1")
 app.include_router(user_router, prefix="/api/v1")
 app.include_router(chat_router, prefix="/api/v1")
 app.include_router(document_router, prefix="/api/v1")
+app.include_router(simple_router, prefix="/api/v1")

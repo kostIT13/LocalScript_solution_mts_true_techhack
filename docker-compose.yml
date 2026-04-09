@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+      args:
+        - PYPI_INDEX_URL=${PYPI_INDEX_URL:-https://pypi.org/simple}
     container_name: my_local_migrations
     command: ["uv", "run", "alembic", "upgrade", "head"]
     env_file:
@@ -10,16 +12,15 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     depends_on:
-      db:
-        condition: service_healthy 
+      - db
     networks:
       - app_network
-    restart: "no"  
+    restart: "no"
     volumes:
       - ./backend/src:/app/src:ro
       - ./backend/alembic:/app/alembic:ro
       - ./backend/alembic.ini:/app/alembic.ini:ro
-      - /app/.venv
+      - backend_venv:/app/.venv
     working_dir: /app
 
   db:
@@ -30,49 +31,63 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5432:5432"  
+      - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data 
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - app_network
 
   ollama:
     image: ollama/ollama:latest
-    ports: ["11434:11434"]
+    container_name: localscript_ollama
+    ports:
+      - "11434:11434"
     volumes:
-      - ollama_data:/root/.ollama  
+      - ollama_data:/root/.ollama
     environment:
       - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_KEEP_ALIVE=0  
     networks:
       - app_network
+    deploy:
+      resources:
+        limits:
+          memory: 8G  
 
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    ports: ["8000:8000"]
+      args:
+        - PYPI_INDEX_URL=${PYPI_INDEX_URL:-https://pypi.org/simple}
+    container_name: localscript_backend
+    ports:
+      - "8000:8000"
     volumes:
-      - ./backend:/app
-      - /app/.venv
-      - /app/__pycache__
+      - ./backend/src:/app/src:ro
+      - ./pyproject.toml:/app/pyproject.toml:ro
+      - ./uv.lock:/app/uv.lock:ro
+      - backend_venv:/app/.venv
+      - ./uploads:/app/uploads
       - /var/run/docker.sock:/var/run/docker.sock
-    command: ["uv", "run", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    command: >
+      uv run uvicorn src.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+      --reload-dir /app/src
+      --log-level info
     environment:
-      - OLLAMA_URL=http://ollama:11434
-      - SECRET_KEY=${SECRET_KEY}
+      - OLLAMA_HOST=http://ollama:11434
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - SECRET_KEY=${SECRET_KEY}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
     depends_on:
-      db:
-        condition: service_healthy
-      ollama:
-        condition: service_started
-      sandbox:
-        condition: service_started
+      - db
+      - ollama
+      - sandbox
     networks:
       - app_network
     restart: unless-stopped
@@ -86,43 +101,37 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'        
-          memory: 64M      
+          cpus: '0.5'
+          memory: 64M
         reservations:
           cpus: '0.1'
           memory: 32M
     security_opt:
-      - no-new-privileges:true 
+      - no-new-privileges:true
     read_only: true
     tmpfs:
       - /tmp:size=16M,noexec,nosuid
     networks:
       - app_network
-    restart: no
+    restart: "no"
+
   chromadb:
     image: chromadb/chroma:latest
     container_name: my_chroma
     ports:
-      - "8001:8000" 
+      - "8001:8000"
     volumes:
-      - chroma_data:/chroma/chroma 
+      - chroma_data:/chroma/chroma
     networks:
       - app_network
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "wget --spider -q http://localhost:8000/api/v1/heartbeat || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
 
 networks:
   app_network:
     driver: bridge
 
 volumes:
-  chroma_data:
-  ollama_data:  
-  postgres_data:
-
-  
+  backend_venv:     
+  chroma_data:      
+  ollama_data:     
+  postgres_data:    

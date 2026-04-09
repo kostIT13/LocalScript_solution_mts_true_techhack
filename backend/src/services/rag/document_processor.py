@@ -7,7 +7,6 @@ from langchain_community.document_loaders import (
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document as LangChainDocument
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -117,7 +116,4 @@ class DocumentProcessor:
         return len(text) // 4
 
 
-document_processor = DocumentProcessor(
-    chunk_size=500,     
-    chunk_overlap=50,    
-)
+document_processor = DocumentProcessor(chunk_size=500, chunk_overlap=50)

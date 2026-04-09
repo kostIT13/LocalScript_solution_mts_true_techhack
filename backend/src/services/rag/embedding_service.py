@@ -20,17 +20,6 @@ class EmbeddingService:
         if not valid_texts:
             return []
         return self.client.embed_texts(valid_texts)
-    
-    def normalize_embeddings(self, embeddings: List[List[float]]) -> List[List[float]]:
-        import math
-        normalized = []
-        for emb in embeddings:
-            norm = math.sqrt(sum(x * x for x in emb))
-            if norm > 0:
-                normalized.append([x / norm for x in emb])
-            else:
-                normalized.append(emb)
-        return normalized
 
 
 embedding_service = EmbeddingService()

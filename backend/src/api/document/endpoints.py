@@ -1,4 +1,3 @@
-# backend/src/api/document/endpoints.py
 from fastapi import APIRouter, UploadFile, File, status, HTTPException, Depends, BackgroundTasks
 from src.api.document.schemas import DocumentListResponse, DocumentResponse, DocumentUploadResponse
 from src.api.document.dependencies import DocumentDependency, DocumentServiceDependency
@@ -13,20 +12,19 @@ async def get_user_documents(
     current_user: CurrentUserDependency,
     service: DocumentServiceDependency
 ):
-    return await service.get_user_documents(current_user.id)
+    return await service.get_list_documents(current_user.id)
 
 
 @router.post('/upload', response_model=DocumentUploadResponse)
 async def upload_document(
     current_user: CurrentUserDependency,
     service: DocumentServiceDependency,
-    background_tasks: BackgroundTasks,  # 🔥 ДОБАВЛЕНО: Обязательно для фоновой задачи!
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...)
 ):
     if not file.filename:
         raise HTTPException(status_code=400, detail="Имя файла не указано")
     
-    # file.content_type может быть None, если клиент не передал заголовок
     content_type = file.content_type or "application/octet-stream"
 
     file_content = await file.read()
@@ -40,7 +38,7 @@ async def upload_document(
             filename=file.filename,
             file_content=file_content,
             file_type=content_type,
-            background_tasks=background_tasks  # 🔥 ПЕРЕДАЁМ в сервис
+            background_tasks=background_tasks 
         )
         
         return DocumentUploadResponse(

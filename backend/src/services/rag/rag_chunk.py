@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 
 
@@ -10,6 +10,4 @@ class RAGChunk(BaseModel):
     score: float = Field(default=0.0, description="Релевантность (0-1)")
     metadata: dict = Field(default_factory=dict, description="Доп. метаданные")
     
-    class Config:
-        from_attributes = True
-        extra = "allow"  
+    model_config = ConfigDict(from_attributes=True, extra="allow")

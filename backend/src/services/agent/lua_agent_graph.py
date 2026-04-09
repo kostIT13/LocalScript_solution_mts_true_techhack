@@ -1,34 +1,53 @@
 import re
 import asyncio
 import logging
-from typing import TypedDict, Annotated, List, Optional, Literal
+from typing import TypedDict, Annotated, List, Optional, Literal, Tuple
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from src.services.llm.generator import stream_chat
-from src.services.prompts.lua_rag_agent_prompt import build_rag_prompt, LUA_RAG_AGENT_PROMPT
+from src.services.prompts.lua_rag_agent_prompt import build_rag_prompt
 from src.services.rag.rag_service import RAGChunk, rag_service
-
+from src.services.sandbox.sandbox_service import sandbox_service, SandboxResult
 
 logger = logging.getLogger(__name__)
 
 
 class AgentState(TypedDict):
-    messages: Annotated[list, add_messages]  
-    current_code: str                       
-    validation_error: Optional[str]          
-    attempts: int                           
-    rag_context: Optional[str]             
-    user_id: str                            
-    chat_id: Optional[str]                
+    messages: Annotated[list, add_messages]
+    current_code: str
+    validation_error: Optional[str]
+    execution_result: Optional[SandboxResult]
+    attempts: int
+    rag_chunks: Optional[List[RAGChunk]]
+    user_id: str
+    chat_id: Optional[str]
+    run_tests: bool
+    skip_rag: bool  # ← Новый флаг: пропускать поиск в базе
 
 
 def extract_code_block(text: str) -> Optional[str]:
-    match = re.search(r"```lua\s*(.*?)\s*```", text, re.DOTALL)
-    return match.group(1).strip() if match else None
+    """Извлекает чистый Lua-код."""
+    if not text:
+        return None
+    match = re.search(r"```(?:lua)?\s*(.*?)\s*```", text, re.DOTALL | re.IGNORECASE)
+    if match:
+        code = match.group(1).strip()
+        return _clean_lua_code(code) if code else None
+    if re.match(r"^\s*(local|function|return|if|while|for)", text, re.MULTILINE):
+        return _clean_lua_code(text.strip())
+    return None
 
 
-async def validate_lua_code(code: str) -> tuple[bool, Optional[str]]:
+def _clean_lua_code(code: str) -> str:
+    code = re.sub(r'\[Источник:[^\]]*\]\s*', '', code)
+    code = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', code)
+    return code.strip()
+
+
+async def validate_lua_code(code: str, timeout: int = 10) -> Tuple[bool, Optional[str]]:
+    if not code or code.strip().startswith("⚠️"):
+        return True, None
     try:
         process = await asyncio.create_subprocess_exec(
             "luac", "-p", "-",
@@ -36,86 +55,71 @@ async def validate_lua_code(code: str) -> tuple[bool, Optional[str]]:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
-        stdout, stderr = await process.communicate(code.encode('utf-8'))
-        
+        stdout, stderr = await asyncio.wait_for(
+            process.communicate(code.encode('utf-8')),
+            timeout=timeout
+        )
         if process.returncode == 0:
             return True, None
-        else:
-            error_msg = stderr.decode('utf-8').strip()
-            return False, error_msg
+        return False, stderr.decode('utf-8').strip()
     except FileNotFoundError:
-        logger.warning("luac не найден, пропускаю валидацию")
-        return True, None 
+        return True, None
+    except asyncio.TimeoutError:
+        return False, "Превышено время валидации"
     except Exception as e:
-        logger.error(f"Ошибка валидации: {e}")
         return False, str(e)
 
 
 async def retrieval_node(state: AgentState) -> AgentState:
+    """🔹 БЫСТРЫЙ РЕЖИМ: Если skip_rag=True, сразу возвращаем пустоту."""
+    if state.get("skip_rag", False):
+        return {"rag_chunks": []}
+    
     query = state["messages"][-1].content if state["messages"] else ""
-    
-    if "?" in query or any(kw in query.lower() for kw in ["как", "что", "почему", "документация"]):
-        try:
-            chunks: List[RAGChunk] = await rag_service.search(
-                query=query,
-                user_id=state["user_id"],
-                top_k=10
-            )
-            if chunks:
-                context_str = "\n\n".join([
-                    f"[Источник: {c.filename}]\n{c.content}"
-                    for c in chunks[:5]
-                ])
-                logger.info(f"RAG: найдено {len(chunks)} чанков для запроса '{query[:30]}...'")
-                return {"rag_context": context_str}
-        except Exception as e:
-            logger.error(f"Ошибка RAG-поиска: {e}")
-    
-    return {"rag_context": None}
+    try:
+        chunks = await rag_service.search(query=query, user_id=state["user_id"], top_k=3)
+        return {"rag_chunks": chunks}
+    except Exception as e:
+        logger.error(f"RAG error: {e}")
+        return {"rag_chunks": []}
 
 
 async def generation_node(state: AgentState) -> AgentState:
+    """Генерация кода."""
     try:
         messages = state["messages"]
         user_query = messages[-1].content if messages else ""
+        rag_chunks = state.get("rag_chunks") or []
         
-        rag_chunks = []
+        # Если RAG пропущен, контекст пустой, но промпт сработает из знаний модели
         prompt = build_rag_prompt(
             query=user_query,
-            context_chunks=rag_chunks, 
-            chat_history=[{"role": m.type, "content": m.content} for m in messages[:-1]]
+            context_chunks=rag_chunks,
+            chat_history=[] 
         )
-        
-        if state.get("rag_context"):
-            prompt = prompt.replace(
-                "ДОКУМЕНТАЦИЯ:",
-                f"ДОКУМЕНТАЦИЯ:\n{state['rag_context']}\n\n"
-            )
         
         full_response = ""
         async for token in stream_chat(
             prompt=prompt,
-            system_prompt="", 
-            temperature=0.2,
-            num_ctx=4096
+            system_prompt="",
+            temperature=0.1,  # Низкая температура для точности
+            num_ctx=2048      # Меньший контекст для скорости
         ):
             full_response += token
         
         code = extract_code_block(full_response)
-        
-        logger.info(f"Генерация завершена, код извлечён: {bool(code)}")
+        logger.info(f"Генерация: код={bool(code)}")
         
         return {
             "messages": [AIMessage(content=full_response)],
             "current_code": code or full_response,
-            "attempts": state.get("attempts", 0) + 1
+            "attempts": state.get("attempts", 0) + 1,
+            "validation_error": None
         }
-        
     except Exception as e:
-        logger.error(f"Ошибка в generation_node: {e}", exc_info=True)
-        error_msg = f"Произошла ошибка при генерации: {str(e)}"
+        logger.error(f"Gen error: {e}")
         return {
-            "messages": [AIMessage(content=error_msg)],
+            "messages": [AIMessage(content=str(e))],
             "current_code": "",
             "validation_error": str(e),
             "attempts": state.get("attempts", 0) + 1
@@ -123,54 +127,62 @@ async def generation_node(state: AgentState) -> AgentState:
 
 
 async def validation_node(state: AgentState) -> AgentState:
+    """Валидация через luac."""
     code = state.get("current_code", "")
-    if not code or code.strip().startswith("⚠️"):
+    if not code:
         return {"validation_error": None}
     
     is_valid, error = await validate_lua_code(code)
-    
     if is_valid:
-        logger.info("Код валиден")
         return {"validation_error": None}
-    else:
-        logger.warning(f"Ошибка валидации: {error}")
-        return {"validation_error": error}
+    return {"validation_error": error}
 
 
-def router(state: AgentState) -> Literal["generate", "end"]:
+async def execution_node(state: AgentState) -> AgentState:
+    """🔹 Запуск в Sandbox."""
+    if not state.get("run_tests", False):
+        return {"execution_result": None}
+    
+    code = state.get("current_code", "")
+    if not code:
+        return {"execution_result": None}
+    
+    try:
+        result = await sandbox_service.execute(code, timeout=5)
+        return {"execution_result": result}
+    except Exception as e:
+        return {"execution_result": SandboxResult(success=False, error=str(e))}
+
+
+def router(state: AgentState) -> Literal["generate", "execute", "end"]:
     attempts = state.get("attempts", 0)
     has_error = bool(state.get("validation_error"))
     
-    if has_error and attempts < 3:
-        logger.info(f"Попытка {attempts + 1}/3: исправляю ошибку")
+    if has_error and attempts < 1:
         return "generate"
     
-    if has_error:
-        logger.warning(f"Достигнут лимит попыток ({attempts}), возвращаю последний код")
-    
+    if state.get("run_tests", False):
+        return "execute"
+        
     return "end"
 
 
 def create_lua_agent():
     workflow = StateGraph(AgentState)
-    
-    workflow.add_node("retrieve", retrieval_node)      
-    workflow.add_node("generate", generation_node)   
-    workflow.add_node("validate", validation_node)    
+    workflow.add_node("retrieve", retrieval_node)
+    workflow.add_node("generate", generation_node)
+    workflow.add_node("validate", validation_node)
+    workflow.add_node("execute", execution_node)
     
     workflow.set_entry_point("retrieve")
-    
     workflow.add_edge("retrieve", "generate")
     workflow.add_edge("generate", "validate")
     
     workflow.add_conditional_edges(
-        "validate",
-        router,
-        {
-            "generate": "generate",
-            "end": END
-        }
+        "validate", router,
+        {"generate": "generate", "execute": "execute", "end": END}
     )
+    workflow.add_edge("execute", END)
     
     return workflow.compile()
 

@@ -1,9 +1,8 @@
 import logging
-from typing import Optional, Union, List
+from typing import Optional, List, AsyncGenerator
 from src.core.config import settings
 import asyncio
 import ollama
-
 
 logger = logging.getLogger(__name__)
 
@@ -13,20 +12,14 @@ class OllamaClient:
         self.embedding_model = settings.OLLAMA_EMBEDDING_MODEL
         self.llm_model = settings.OLLAMA_LLM_MODEL
         self.base_url = settings.OLLAMA_HOST.rstrip("/")
-        
         self._client = None
-        
         logger.info(f"OllamaClient инициализирован (хост={self.base_url})")
     
     @property
     def client(self):
         if self._client is None:
             try:
-                import ollama
                 headers = {}
-                if settings.OLLAMA_TOKEN:
-                    headers["Authorization"] = f"Bearer {settings.OLLAMA_TOKEN}"
-                
                 self._client = ollama.Client(
                     host=self.base_url,
                     headers=headers if headers else None
@@ -83,29 +76,35 @@ class OllamaClient:
         system: str = "",
         temperature: float = 0.2,
         num_ctx: int = 4096
-    ):  
+    ) -> AsyncGenerator[str, None]:
         try:
-            messages = []
-            if system:
-                messages.append({"role": "system", "content": system})
-            messages.append({"role": "user", "content": prompt})
+            def _sync_stream():
+                messages = []
+                if system:
+                    messages.append({"role": "system", "content": system})
+                messages.append({"role": "user", "content": prompt})
+                
+                stream = self.client.chat(
+                    model=self.llm_model,
+                    messages=messages,
+                    stream=True,
+                    options={
+                        "temperature": temperature,
+                        "top_p": 0.9,
+                        "num_ctx": num_ctx
+                    }
+                )
+                
+                for chunk in stream:
+                    content = chunk.get("message", {}).get("content", "")
+                    if content:
+                        yield content
             
-            stream = self.client.chat(
-                model=self.llm_model,
-                messages=messages,
-                stream=True,
-                options={
-                    "temperature": temperature,
-                    "top_p": 0.9,
-                    "num_ctx": num_ctx
-                }
-            )
-            
-            for chunk in stream:
-                content = chunk.get("message", {}).get("content", "")
-                if content:
-                    yield content
-                    await asyncio.sleep(0.01)
+            loop = asyncio.get_event_loop()
+            tokens = await loop.run_in_executor(None, lambda: list(_sync_stream()))
+            for token in tokens:
+                yield token
+                await asyncio.sleep(0.001)
                     
         except Exception as e:
             logger.error(f"Ошибка стриминга: {e}")

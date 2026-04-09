@@ -3,28 +3,17 @@ import chromadb
 from chromadb.config import Settings
 from src.core.config import settings
 
-
 logger = logging.getLogger(__name__)
 
 
-def _create_chroma_client():
-    is_production = settings.ENVIRONMENT == "production"
-    
+def _create_chroma_client():    
     chroma_settings = Settings(anonymized_telemetry=False)
-    
-    if is_production:
-        logger.info("ChromaDB: режим production, локальное хранилище")
-        return chromadb.PersistentClient(
-            path="/app/chroma_data",
-            settings=chroma_settings
-        )
-    else:
-        logger.info(f"ChromaDB: режим dev, подключение к {settings.CHROMA_HOST}:{settings.CHROMA_PORT}")
-        return chromadb.HttpClient(
-            host=settings.CHROMA_HOST,
-            port=settings.CHROMA_PORT,
-            settings=chroma_settings
-        )
+    logger.info(f"ChromaDB: подключение к {settings.CHROMA_HOST}:{settings.CHROMA_PORT}")
+    return chromadb.HttpClient(
+        host=settings.CHROMA_HOST,
+        port=settings.CHROMA_PORT,
+        settings=chroma_settings
+    )
 
 
 class ChromaClient:
@@ -54,7 +43,6 @@ class ChromaClient:
     ):
         if not ids:
             return
-        
         try:
             self.collection.add(
                 ids=ids,

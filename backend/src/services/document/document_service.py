@@ -26,15 +26,15 @@ class DocumentService:
         self.upload_dir.mkdir(parents=True, exist_ok=True)
         logger.info(f"DocumentService инициализирован (upload_dir={self.upload_dir})")
 
-    async def get_document(self, document_id: str, user_id: str) -> Optional[Document]:
+    async def get_document_by_id(self, document_id: str, user_id: str) -> Optional[Document]:
         doc = await self.repository.get_by_id(document_id)
         if not doc or doc.user_id != user_id or doc.is_deleted:
             return None
         return doc
 
-    async def list_documents(self, user_id: str, limit: int = 20) -> List[Document]:
+    async def get_list_documents(self, user_id: str, limit: int = 20) -> List[Document]:
         limit = max(1, min(limit, 100))
-        return await self.repository.get_user_documents(user_id, limit)
+        return await self.repository.get_user_documents(user_id)
 
     async def upload_document(
         self,
@@ -100,7 +100,7 @@ class DocumentService:
         return doc
 
     async def delete_document(self, document_id: str, user_id: str, hard: bool = False) -> bool:
-        doc = await self.get_document(document_id, user_id)
+        doc = await self.get_document_by_id(document_id, user_id)
         if not doc:
             logger.warning(f"Документ {document_id} не найден или доступ запрещён")
             return False

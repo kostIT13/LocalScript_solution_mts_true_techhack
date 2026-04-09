@@ -13,7 +13,9 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "v8Yxl3MvuSevxhmPeLe2unTojoeW9w02f9l0OTiO4bw"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    ENVIRONMENT: str
+    CHROMA_HOST: str = "chromadb"
+    CHROMA_PORT: str = "8000"
+    
 
     model_config = SettingsConfigDict(
         env_file=Path(__file__).resolve().parent.parent.parent.parent / ".env",

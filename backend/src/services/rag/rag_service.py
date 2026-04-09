@@ -13,7 +13,6 @@ from src.services.prompts.lua_rag_agent_prompt import build_rag_prompt
 from src.services.document.repository import SQLAlchemyDocumentRepository
 from src.services.rag.rag_chunk import RAGChunk
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -31,7 +30,6 @@ class RAGService:
         self.embeddings = embedding_service
         self.processor = document_processor
         self.llm = ollama_client
-        
         logger.info("RAGService инициализирован")
     
     async def _get_repository(self, session: Optional[AsyncSession] = None):
@@ -45,14 +43,15 @@ class RAGService:
         try:
             logger.info(f"[INDEX] Начинаю: {document.filename} (id={document.id})")
             
-            chunks = self.processor.process(document.file_path, document.file_type)
+            chunks = await asyncio.to_thread(self.processor.process, document.file_path, document.file_type)
             if not chunks:
                 return IndexResult(success=False, error="Пустой документ или ошибка извлечения текста")
             
             logger.info(f"Создано {len(chunks)} чанков")
             
             texts = [chunk.page_content for chunk in chunks]
-            embeddings_list = self.embeddings.embed_texts(texts)
+            embeddings_list = await asyncio.to_thread(self.embeddings.embed_texts, texts)
+            
             if len(embeddings_list) != len(chunks):
                 return IndexResult(success=False, error="Несоответствие чанков и эмбеддингов")
             
@@ -71,7 +70,8 @@ class RAGService:
             
             ids = [f"{document.id}_{i}" for i in range(len(chunks))]
             
-            self.chroma.add_documents(
+            await asyncio.to_thread(
+                self.chroma.add_documents,
                 ids=ids,
                 embeddings=embeddings_list,
                 documents=texts,
@@ -120,13 +120,14 @@ class RAGService:
         try:
             logger.info(f"Поиск: '{query[:50]}...', user={user_id}, k={top_k}")
             
-            query_embedding = self.embeddings.embed_text(query)
+            query_embedding = await asyncio.to_thread(self.embeddings.embed_text, query)
             if not query_embedding:
                 return []
             
-            results = self.chroma.query(
+            results = await asyncio.to_thread(
+                self.chroma.query,
                 query_embedding=query_embedding,
-                n_results=top_k * 2,  
+                n_results=top_k * 2,
                 user_id=user_id,
                 document_id=document_id
             )
@@ -190,11 +191,6 @@ class RAGService:
                 "used_chunks": []
             }
         
-        context = "\n\n".join([
-            f"[Источник: {c.filename}]\n{c.content}"
-            for c in chunks[:5] 
-        ])
-        
         prompt = build_rag_prompt(
             query=query,
             context_chunks=chunks,
@@ -227,13 +223,7 @@ class RAGService:
         chat_history: Optional[List[dict]] = None,
         temperature: float = 0.2
     ) -> AsyncGenerator[str, None]:
-        """Стримит ответ токен за токеном (для SSE)"""
         chunks = await self.search(query, user_id, top_k=10)
-        
-        context = "\n\n".join([
-            f"[Источник: {c.filename}]\n{c.content}"
-            for c in chunks[:5]
-        ]) if chunks else "ДОКУМЕНТАЦИЯ: Не найдено релевантных фрагментов."
         
         prompt = build_rag_prompt(
             query=query,
@@ -254,7 +244,8 @@ class RAGService:
     
     async def delete_from_index(self, document_id: str, user_id: str) -> bool:
         try:
-            deleted = self.chroma.delete_by_filter(
+            deleted = await asyncio.to_thread(
+                self.chroma.delete_by_filter,
                 user_id=user_id,
                 document_id=document_id
             )
