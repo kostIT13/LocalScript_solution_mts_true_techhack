@@ -23,11 +23,10 @@ class AgentState(TypedDict):
     user_id: str
     chat_id: Optional[str]
     run_tests: bool
-    skip_rag: bool  # ← Новый флаг: пропускать поиск в базе
+    skip_rag: bool 
 
 
 def extract_code_block(text: str) -> Optional[str]:
-    """Извлекает чистый Lua-код."""
     if not text:
         return None
     match = re.search(r"```(?:lua)?\s*(.*?)\s*```", text, re.DOTALL | re.IGNORECASE)
@@ -42,7 +41,33 @@ def extract_code_block(text: str) -> Optional[str]:
 def _clean_lua_code(code: str) -> str:
     code = re.sub(r'\[Источник:[^\]]*\]\s*', '', code)
     code = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', code)
-    return code.strip()
+    
+    garbage_patterns = [
+        r'ДОКУМЕНТАЦИЯ:.*$',
+        r'КОНТЕКСТ:.*$',
+        r'Пользователь:.*$',
+        r'Ассистент:.*$',
+        r'ЗАПРОС:.*$',
+        r'Твой ответ:.*$',
+        r'^-- \[Источник:[^\]]*\].*$',
+    ]
+    for pattern in garbage_patterns:
+        code = re.sub(pattern, '', code, flags=re.MULTILINE | re.IGNORECASE)
+    
+    lines = code.split('\n')
+    cleaned = []
+    for line in lines:
+        stripped = line.strip()
+        if not cleaned and stripped.startswith('--') and 'function' not in stripped.lower():
+            continue
+        cleaned.append(line)
+    
+    code = '\n'.join(cleaned).strip()
+    
+    if code.startswith('-- local function') or code.startswith('-- function'):
+        code = re.sub(r'^--\s*', '', code, flags=re.MULTILINE)
+    
+    return code
 
 
 async def validate_lua_code(code: str, timeout: int = 10) -> Tuple[bool, Optional[str]]:
@@ -71,7 +96,6 @@ async def validate_lua_code(code: str, timeout: int = 10) -> Tuple[bool, Optiona
 
 
 async def retrieval_node(state: AgentState) -> AgentState:
-    """🔹 БЫСТРЫЙ РЕЖИМ: Если skip_rag=True, сразу возвращаем пустоту."""
     if state.get("skip_rag", False):
         return {"rag_chunks": []}
     
@@ -85,13 +109,10 @@ async def retrieval_node(state: AgentState) -> AgentState:
 
 
 async def generation_node(state: AgentState) -> AgentState:
-    """Генерация кода."""
     try:
         messages = state["messages"]
         user_query = messages[-1].content if messages else ""
         rag_chunks = state.get("rag_chunks") or []
-        
-        # Если RAG пропущен, контекст пустой, но промпт сработает из знаний модели
         prompt = build_rag_prompt(
             query=user_query,
             context_chunks=rag_chunks,
@@ -102,8 +123,8 @@ async def generation_node(state: AgentState) -> AgentState:
         async for token in stream_chat(
             prompt=prompt,
             system_prompt="",
-            temperature=0.1,  # Низкая температура для точности
-            num_ctx=2048      # Меньший контекст для скорости
+            temperature=0.1,  
+            num_ctx=2048    
         ):
             full_response += token
         
@@ -127,7 +148,6 @@ async def generation_node(state: AgentState) -> AgentState:
 
 
 async def validation_node(state: AgentState) -> AgentState:
-    """Валидация через luac."""
     code = state.get("current_code", "")
     if not code:
         return {"validation_error": None}
@@ -139,7 +159,6 @@ async def validation_node(state: AgentState) -> AgentState:
 
 
 async def execution_node(state: AgentState) -> AgentState:
-    """🔹 Запуск в Sandbox."""
     if not state.get("run_tests", False):
         return {"execution_result": None}
     
