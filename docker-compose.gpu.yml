@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      # 🔹 Явно разрешаем Ollama использовать всю доступную VRAM
+      - OLLAMA_NUM_GPU=999
+      - OLLAMA_NUM_GPU_LAYERS=999
+      # 🔹 Для проверки: отключаем авто-выгрузку слоев в CPU
+      - OLLAMA_FLASH_ATTENTION=1

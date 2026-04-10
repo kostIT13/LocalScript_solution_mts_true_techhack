@@ -1,110 +1,160 @@
-import asyncio
-import json
-import time
-import logging
-from fastapi import APIRouter
+# backend/src/api/generate/generate_endpoints.py
+import asyncio, json, time, logging, re, uuid
+from collections import defaultdict
+from typing import Optional
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from langchain_core.messages import HumanMessage
+from pydantic import BaseModel, Field
 
-from src.api.generate.schemas import GenerateRequest
-from src.api.generate.dependencies import GenerationServiceDependency
+from src.services.llm.generator import stream_chat
+from src.services.agent.lua_agent_graph import extract_code_block, try_fix_truncated_code
 from src.services.sandbox.sandbox_service import sandbox_service, SandboxResult
-from src.services.agent.lua_agent_graph import lua_agent, AgentState
+from src.api.generate.dependencies import GenerationServiceDependency
 
+router = APIRouter(prefix="/generate", tags=["Code Generation"])
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix='/generations', tags=["Generations"])
+
+# 🔹 Простое in-memory хранилище сессий (для демо хватит; в продакшене → Redis/БД)
+chat_sessions: dict[str, list[dict]] = defaultdict(list)
 
 
-@router.post("/generate", status_code=200)
-async def generate_code(
-    req: GenerateRequest,
-    service: GenerationServiceDependency,
-    user_id: str = "dev-user-temp"
-):
-    record = await asyncio.wait_for(
-        service.create_generation(user_id=user_id, task=req.task, temperature=req.temperature, context_length=req.context_length),
-        timeout=5.0
-    )
+# ─── УТИЛИТЫ ──────────────────────────────────────────────────────────────
+def _get_session_history(chat_id: Optional[str]) -> list[dict]:
+    if not chat_id: return []
+    return chat_sessions.get(chat_id, [])[-8:]  # Последние 8 сообщений
 
+def _save_to_session(chat_id: str, role: str, content: str):
+    if not chat_id: return
+    chat_sessions[chat_id].append({"role": role, "content": content})
+    if len(chat_sessions[chat_id]) > 12:  # Лимит памяти
+        chat_sessions[chat_id] = chat_sessions[chat_id][-12:]
+
+def fix_lua_operators(code: str) -> str:
+    code = re.sub(r'(\w+)\s*\*=\s*(.+?)(?:\n|$)', r'\1 = \1 * \2\n', code)
+    code = re.sub(r'(\w+)\s*\+=\s*(.+?)(?:\n|$)', r'\1 = \1 + \2\n', code)
+    code = re.sub(r'(\w+)\s*-=\s*(.+?)(?:\n|$)', r'\1 = \1 - \2\n', code)
+    code = re.sub(r'(\w+)\s*\/=\s*(.+?)(?:\n|$)', r'\1 = \1 / \2\n', code)
+    return code
+
+
+# ─── СХЕМА ЗАПРОСА ────────────────────────────────────────────────────────
+class GenerateRequest(BaseModel):
+    task: str = Field(..., min_length=1, max_length=1000, description="Задача на естественном языке")
+    temperature: float = Field(default=0.1, ge=0.0, le=1.0)
+    user_id: str = Field(default="dev-user-temp")
+    run_test: bool = Field(default=False, description="Запустить код в Sandbox")
+    chat_id: Optional[str] = Field(default=None, description="ID сессии для продолжения диалога")
+    feedback: Optional[str] = Field(default=None, description="Обратная связь для улучшения кода")
+
+
+# ─── ОСНОВНОЙ ЭНДПОИНТ ────────────────────────────────────────────────────
+@router.post("/lua")
+async def generate_lua(req: GenerateRequest, service: GenerationServiceDependency):
+    """
+    🎯 Основной пайплайн генерации Lua-кода.
+    1. Учитывает контекст сессии и обратную связь
+    2. Генерирует код с валидацией
+    3. Опционально запускает в Sandbox
+    4. Возвращает chat_id для итеративного улучшения
+    """
     async def event_stream():
         start_time = time.time()
+        
+        # 🔹 Системный промпт (жесткие правила Lua 5.4)
+        system_prompt = (
+            "Ты эксперт по Lua 5.4. Пиши ТОЛЬКО рабочий, готовый к использованию код.\n"
+            "❗ ПРАВИЛА: Вместо 'x *= y' пиши 'x = x * y'. Всегда закрывай блоки 'end'.\n"
+            "Проверяй типы аргументов, если задача подразумевает валидацию.\n"
+            "Никаких пояснений, никакого markdown, только чистый код."
+        )
+
+        # 🔹 Формируем промпт с учетом сессии и фидбека
+        history = _get_session_history(req.chat_id)
+        if req.feedback and history:
+            # Цикл улучшения: берем последний код и применяем фидбек
+            last_code = next((m["content"] for m in reversed(history) if m["role"] == "assistant"), "")
+            prompt = f"Исходный код:\n{last_code}\n\n⚠️ ЗАМЕЧАНИЕ: {req.feedback}\n\nИСПРАВЬ код. Задача: {req.task}"
+        else:
+            history_text = "\n".join([f"{m['role']}: {m['content']}" for m in history[-4:]])
+            prompt = f"{history_text}\n\nЗадача: {req.task}\n\nКод:" if history_text else f"Задача: {req.task}\n\nКод:"
+
+        code = ""
+        is_valid = True
+        error = None
+        attempts = 0
+        max_attempts = 2
+
+        # ─── ЦИКЛ ГЕНЕРАЦИИ ───
+        while attempts < max_attempts:
+            attempts += 1
+            ctx = 4096 if attempts == 1 else 2048
+            pred = 256 if attempts == 1 else 300
+            
+            if attempts > 1 and error:
+                prompt += f"\n\n❗ ОШИБКА: {error}\nИСПРАВЬ И ЗАКРОЙ ВСЕ БЛОКИ."
+            
+            full_response = ""
+            async for token in stream_chat(
+                prompt=prompt, system_prompt=system_prompt,
+                temperature=req.temperature, num_ctx=ctx, num_predict=pred
+            ):
+                full_response += token
+                if attempts == 1:
+                    yield f" {json.dumps({'type': 'token', 'data': token}, ensure_ascii=False)}\n\n"
+
+            raw_code = extract_code_block(full_response)
+            code = try_fix_truncated_code(raw_code)
+            
+            # Простая структурная валидация
+            if 'function' in code and code.strip().endswith('end'):
+                is_valid = True
+                break
+            else:
+                error = "Incomplete code structure"
+
+        # ─── SANDBOX ───
+        sandbox_result = None
+        if req.run_test and is_valid and code.strip():
+            try:
+                test_code = fix_lua_operators(code)
+                match = re.search(r'function\s+(\w+)\s*\(', test_code)
+                if match:
+                    test_code = f"{test_code}\n\nprint({match.group(1)}(5))"
+                
+                sandbox_result = await asyncio.wait_for(
+                    sandbox_service.execute(test_code, timeout=5), timeout=8.0
+                )
+            except Exception as e:
+                sandbox_result = SandboxResult(success=False, error=f"Sandbox error: {str(e)}")
+
+        # ─── ФИНАЛЬНЫЙ ОТВЕТ ───
+        total_ms = int((time.time() - start_time) * 1000)
+        session_id = req.chat_id or str(uuid.uuid4())
+        
+        # Сохраняем в сессию
+        if session_id:
+            _save_to_session(session_id, "user", req.task)
+            _save_to_session(session_id, "assistant", code)
+
+        yield f" {json.dumps({
+            'type': 'done',
+            'code': code,
+            'valid': is_valid,
+            'error': error,
+            'attempts': attempts,
+            'chat_id': session_id,
+            'sandbox_result': sandbox_result.model_dump() if sandbox_result else None,
+            'timing_ms': total_ms
+        }, ensure_ascii=False)}\n\n"
+        yield " [DONE]\n\n"
+
         try:
-            initial_state: AgentState = {
-                "messages": [HumanMessage(content=req.task)],
-                "current_code": "",
-                "validation_error": None,
-                "execution_result": None,
-                "attempts": 0,
-                "rag_chunks": None,
-                "user_id": user_id,
-                "chat_id": None,
-                "run_tests": req.run_test,
-            }
-
-            logger.info(f"[T+{time.time()-start_time:.1f}s] Запуск агента...")
-            final_state = await asyncio.wait_for(
-                lua_agent.ainvoke(initial_state),
-                timeout=120.0
-            )
-
-            generated_code = final_state.get("current_code", "")
-            validation_error = final_state.get("validation_error")
-            attempts = final_state.get("attempts", 0)
-            rag_chunks = final_state.get("rag_chunks")
-            execution_result = final_state.get("execution_result")
-
-            logger.info(f"[T+{time.time()-start_time:.1f}s] Агент готов. Код: {bool(generated_code)}, Попытки: {attempts}")
-
-            if generated_code:
-                chunk_size = 150
-                for i in range(0, len(generated_code), chunk_size):
-                    yield f"data: {json.dumps({'type': 'code_chunk', 'data': generated_code[i:i+chunk_size]}, ensure_ascii=False)}\n\n"
-
-            sandbox_result: SandboxResult | None = execution_result
-            if req.run_test and generated_code and not validation_error and not sandbox_result:
-                logger.info(f"[T+{time.time()-start_time:.1f}s] Запуск Sandbox...")
-                try:
-                    sandbox_result = await asyncio.wait_for(
-                        sandbox_service.execute(code=generated_code, timeout=5),
-                        timeout=10.0 
-                    )
-                except asyncio.TimeoutError:
-                    sandbox_result = SandboxResult(success=False, error="Sandbox timeout (10s)")
-                logger.info(f"[T+{time.time()-start_time:.1f}s] Sandbox завершён: success={sandbox_result.success}")
-
-            update_data = {
-                "generated_code": generated_code,
-                "validation_status": "failed" if validation_error else "success",
-                "validation_log": validation_error,
-                "attempts_count": attempts,
-                "latency_ms": int((time.time() - start_time) * 1000),
-                "tokens_completion": len(generated_code.split()),
-            }
-            if sandbox_result:
-                update_data.update({
-                    "sandbox_output": sandbox_result.output,
-                    "sandbox_error": sandbox_result.error,
-                    "sandbox_success": sandbox_result.success,
-                })
-
-            await asyncio.wait_for(service.update_generation(record.id, update_data), timeout=5.0)
-
-            yield f"data: {json.dumps({
-                'type': 'done',
-                'code': generated_code,
-                'sandbox_result': sandbox_result.model_dump() if sandbox_result else None,
-                'agent_attempts': attempts,
-                'used_rag': bool(rag_chunks),
-                'total_time_ms': int((time.time() - start_time) * 1000)
-            }, ensure_ascii=False)}\n\n"
-
-        except asyncio.TimeoutError:
-            logger.error("Превышено время выполнения агента (120s)")
-            yield f"data: {json.dumps({'type': 'error', 'message': 'Генерация заняла слишком много времени. Попробуйте упростить запрос.'})}\n\n"
-        except Exception as e:
-            logger.error(f"Критическая ошибка: {e}", exc_info=True)
-            yield f"data: {json.dumps({'type': 'error', 'message': f'Внутренняя ошибка: {str(e)}'})}\n\n"
-        finally:
-            yield "data: [DONE]\n\n"
+            if hasattr(service, 'create_generation'):
+                await service.create_generation(
+                    user_id=req.user_id, task=req.task,
+                    temperature=req.temperature, context_length=4096
+                )
+        except Exception:
+            pass
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

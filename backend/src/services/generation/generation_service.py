@@ -12,29 +12,44 @@ class GenerationService:
     def __init__(self, db: AsyncSession):
         self.repository = SQLAlchemyGenerationRepository(db)
 
-    async def create_generation(
-        self,
-        user_id: str,
-        task: str,
-        language: str = "lua",
-        model_name: str = "qwen2.5-coder:1.5b",
-        temperature: float = 0.2,
-        context_length: int = 4096
-    ) -> CodeGeneration:
-        if not user_id or not task:
-            raise ValueError("user_id и task обязательны")
+    # backend/src/services/generation/generation_service.py
 
-        data = {
-            "user_id": user_id,
-            "task": task,
-            "language": language,
-            "model_name": model_name,
-            "temperature": temperature,
-            "context_length": context_length,
-            "validation_status": GenerationStatus.PENDING.value,
-            "attempts_count": 1,
-        }
-        return await self.repository.create(data)
+async def create_generation(
+    self,
+    user_id: str,
+    task: str,
+    language: str = "lua",
+    model_name: str = "qwen2.5-coder:1.5b",
+    temperature: float = 0.2,
+    context_length: int = 4096,
+    generated_code: Optional[str] = None,  # ← Новый параметр
+    validation_status: Optional[str] = None,
+    validation_log: Optional[str] = None,
+    latency_ms: Optional[int] = None,
+) -> CodeGeneration:
+    if not user_id or not task:
+        raise ValueError("user_id и task обязательны")
+
+    data = {
+        "user_id": user_id,
+        "task": task,
+        "language": language,
+        "model_name": model_name,
+        "temperature": temperature,
+        "context_length": context_length,
+        "validation_status": validation_status or GenerationStatus.PENDING.value,
+        "attempts_count": 1,
+    }
+    
+    # 🔹 Добавляем опциональные поля, если переданы
+    if generated_code is not None:
+        data["generated_code"] = generated_code
+    if validation_log is not None:
+        data["validation_log"] = validation_log
+    if latency_ms is not None:
+        data["latency_ms"] = latency_ms
+        
+    return await self.repository.create(data)
 
     async def get_generation(self, generation_id: str) -> Optional[CodeGeneration]:
         if not generation_id:

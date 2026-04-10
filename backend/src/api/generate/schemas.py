@@ -2,13 +2,18 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 from src.models.generation import GenerationStatus
+from pydantic import BaseModel, Field
 
 
 class GenerateRequest(BaseModel):
-    task: str = Field(..., min_length=1, max_length=2000, description="Задача для генерации Lua-кода")
-    temperature: float = Field(0.2, ge=0.0, le=1.0, description="Креативность (0=точно, 1=рандом)")
-    context_length: int = Field(4096, ge=512, le=8192, description="Размер контекста (num_ctx)")
-    run_test: bool = Field(default=False, description="Запустить код в Sandbox после генерации")
+    task: str = Field(..., min_length=1, max_length=4000, description="Задача на естественном языке")
+    temperature: float = Field(default=0.2, ge=0.0, le=1.0)
+    context_length: int = Field(default=4096, ge=512, le=32768)
+    
+    # 🔹 Флаги управления режимами
+    run_test: bool = Field(default=False, description="Запустить код в sandbox")
+    fast_mode: bool = Field(default=False, description="Быстрый режим: меньше контекст, 1 попытка")
+    skip_rag: bool = Field(default=None, description="Принудительно пропустить RAG (None=авто)")
 
 class GenerationRecordResponse(BaseModel):
     id: str
