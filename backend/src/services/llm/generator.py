@@ -1,4 +1,3 @@
-# backend/src/services/llm/generator.py
 import os
 import logging
 from typing import AsyncGenerator, Optional
@@ -21,7 +20,6 @@ def _get_chat_llm(
     num_batch: int,
     num_parallel: int
 ):
-    """Кэшированный экземпляр ChatOllama с настраиваемыми параметрами."""
     logger.debug(f"LLM init: {model}, ctx={num_ctx}, predict={num_predict}")
     
     return ChatOllama(
@@ -48,11 +46,6 @@ async def stream_chat(
     num_parallel: Optional[int] = None,
     model: Optional[str] = None
 ) -> AsyncGenerator[str, None]:
-    """
-    Стриминг чата с Ollama.
-    Параметры можно переопределить через аргументы или .env.
-    """
-    # 🔹 Читаем параметры: аргументы > .env > дефолты для CPU
     final_ctx = num_ctx or int(os.getenv("NUM_CTX", 1024))
     final_predict = num_predict or int(os.getenv("NUM_PREDICT", 200))
     final_batch = num_batch or int(os.getenv("NUM_BATCH", 1))

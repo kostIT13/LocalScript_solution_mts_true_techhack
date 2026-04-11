@@ -9,8 +9,6 @@ class GenerateRequest(BaseModel):
     task: str = Field(..., min_length=1, max_length=4000, description="Задача на естественном языке")
     temperature: float = Field(default=0.2, ge=0.0, le=1.0)
     context_length: int = Field(default=4096, ge=512, le=32768)
-    
-    # 🔹 Флаги управления режимами
     run_test: bool = Field(default=False, description="Запустить код в sandbox")
     fast_mode: bool = Field(default=False, description="Быстрый режим: меньше контекст, 1 попытка")
     skip_rag: bool = Field(default=None, description="Принудительно пропустить RAG (None=авто)")

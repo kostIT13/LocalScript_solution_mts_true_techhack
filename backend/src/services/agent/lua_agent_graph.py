@@ -30,22 +30,18 @@ class AgentState(TypedDict):
 
 
 def extract_code_block(text: str) -> str:
-    """Надёжно извлекает код из ответа LLM, игнорируя markdown и пояснения."""
     if not text:
         return ""
     
-    # 1. Разделяем по ``` и берём содержимое первого блока
     parts = text.split("```")
     if len(parts) >= 3:
         code_block = parts[1]
-        # Убираем тег языка, если есть
         first_line = code_block.split('\n')[0].strip().lower()
         if first_line in ('lua', 'python', 'javascript', 'js', 'typescript', 'ts'):
             code_block = '\n'.join(code_block.split('\n')[1:])
     else:
         code_block = text
         
-    # 2. Убираем только явные пояснения после кода (кириллица или английские слова)
     lines = code_block.split('\n')
     clean_lines = []
     
@@ -54,7 +50,6 @@ def extract_code_block(text: str) -> str:
         if not stripped:
             continue
             
-        # Останавливаемся на первой строке, которая явно не код
         if re.match(r'^[а-яА-Я]', stripped) or re.match(r'^(This|The|Example|Parameters|Usage|Note|Пример)', stripped, re.IGNORECASE):
             break
             
@@ -64,7 +59,6 @@ def extract_code_block(text: str) -> str:
     if not code:
         return ""
         
-    # 3. Аварийное восстановление: добавляем недостающие end
     opens = len(re.findall(r'\b(function|if|while|for|repeat)\b', code))
     closes = len(re.findall(r'\bend\b', code))
     if opens > closes:
@@ -74,17 +68,14 @@ def extract_code_block(text: str) -> str:
 
 
 def try_fix_truncated_code(code: str) -> str:
-    """Дополнительная страховка от обрезки."""
     if not code or code.strip().endswith('end'):
         return code
-    # Если код обрывается на полуслове или без end
     if not any(code.strip().endswith(kw) for kw in ['end', 'then', 'do', 'else', ')', '"', "'"]):
         return code + "\nend"
     return code
 
 
 def _clean_lua_code(code: str) -> str:
-    """Агрессивно чистит код от мусора."""
     if not code:
         return ""
     
@@ -142,7 +133,6 @@ def _clean_lua_code(code: str) -> str:
 
 
 def template_validation(code: str) -> Tuple[bool, Optional[str]]:
-    """Шаблонная проверка кода."""
     if not code:
         return True, None
     errors = []
@@ -161,7 +151,6 @@ def template_validation(code: str) -> Tuple[bool, Optional[str]]:
 
 
 async def validate_lua_code(code: str, timeout: int = 10) -> Tuple[bool, Optional[str]]:
-    """Валидация: luac + шаблоны."""
     if not code or code.strip().startswith("⚠️"):
         return True, None
     try:
@@ -191,21 +180,19 @@ async def validate_lua_code(code: str, timeout: int = 10) -> Tuple[bool, Optiona
 
 
 async def clarification_node(state: AgentState) -> AgentState:
-    """Проверка: нужно ли уточнить запрос."""
     query = state["messages"][-1].content if state["messages"] else ""
     unclear_patterns = [r'^сделай$', r'^напиши код$', r'^помоги$', r'^test$', r'^как [а-я]+$', r'^function$', r'^lua$']
     words = query.split()
     is_unclear = len(words) < 3 or any(re.search(p, query.lower()) for p in unclear_patterns) or (len(query) < 20 and '?' not in query and 'function' not in query.lower())
     
     if is_unclear:
-        clarification = "❓ Уточните: какую функцию создать? Какие параметры и возврат?"
-        logger.info(f"🔍 Запрос неясен: '{query[:40]}...'")
+        clarification = "Уточните: какую функцию создать? Какие параметры и возврат?"
+        logger.info(f"Запрос неясен: '{query[:40]}...'")
         return {"messages": [AIMessage(content=clarification)], "current_code": "", "needs_clarification": True}
     return {"needs_clarification": False}
 
 
 async def retrieval_node(state: AgentState) -> AgentState:
-    """Поиск в RAG — только если нужно."""
     if state.get("skip_rag", False) or state.get("needs_clarification", False):
         return {"rag_chunks": []}
     query = state["messages"][-1].content if state["messages"] else ""
@@ -222,13 +209,11 @@ async def retrieval_node(state: AgentState) -> AgentState:
 
 
 async def generation_node(state: AgentState) -> AgentState:
-    """Генерация кода с оптимизациями для CPU."""
     try:
         messages = state["messages"]
         user_query = messages[-1].content if messages else ""
         rag_chunks = state.get("rag_chunks") or []
         
-        # 🔹 Агрессивные настройки для CPU
         fast_mode = state.get("fast_mode", False) or state.get("skip_rag", False)
         if fast_mode:
             temperature = 0.1
@@ -276,7 +261,6 @@ async def generation_node(state: AgentState) -> AgentState:
 
 
 async def validation_node(state: AgentState) -> AgentState:
-    """Валидация кода."""
     code = state.get("current_code", "")
     if not code or code.strip().startswith("⚠️"):
         return {"validation_error": None}
@@ -289,7 +273,6 @@ async def validation_node(state: AgentState) -> AgentState:
 
 
 async def execution_node(state: AgentState) -> AgentState:
-    """Запуск в sandbox."""
     if not state.get("run_tests", False):
         return {"execution_result": None}
     code = state.get("current_code", "")
@@ -307,16 +290,15 @@ async def execution_node(state: AgentState) -> AgentState:
 
 
 def router(state: AgentState) -> Literal["clarify", "generate", "execute", "end"]:
-    """Маршрутизатор: 1 попытка + уточнения."""
     attempts = state.get("attempts", 0)
     has_error = bool(state.get("validation_error"))
     needs_clarification = state.get("needs_clarification", False)
     
     if needs_clarification:
-        logger.info("🔍 Возвращаю вопрос на уточнение")
+        logger.info("Возвращаю вопрос на уточнение")
         return "end"
     if has_error and attempts < 1:
-        logger.info(f"🔄 Попытка {attempts + 1}/1")
+        logger.info(f"Попытка {attempts + 1}/1")
         return "generate"
     if state.get("run_tests", False):
         return "execute"

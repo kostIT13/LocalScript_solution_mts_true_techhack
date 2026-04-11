@@ -1,24 +1,20 @@
-# backend/src/api/generate/generate_endpoints.py
 import asyncio, json, time, logging, re, uuid
 from collections import defaultdict
 from typing import Optional
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-
 from src.services.llm.generator import stream_chat
 from src.services.agent.lua_agent_graph import extract_code_block, try_fix_truncated_code
 from src.services.sandbox.sandbox_service import sandbox_service, SandboxResult
 from src.api.generate.dependencies import GenerationServiceDependency
 
+
 router = APIRouter(prefix="/generate", tags=["Code Generation"])
 logger = logging.getLogger(__name__)
 
-# 🔹 In-memory сессии (для контекста диалога; в продакшене → Redis)
 chat_sessions: dict[str, list[dict]] = defaultdict(list)
 
-
-# ─── УТИЛИТЫ ──────────────────────────────────────────────────────────────
 def _get_session_history(chat_id: Optional[str]) -> list[dict]:
     if not chat_id: return []
     return chat_sessions.get(chat_id, [])[-8:]
@@ -40,7 +36,7 @@ def _needs_clarification(task: str) -> Optional[str]:
     task_lower = task.lower().strip()
     
     if len(task.split()) < 4:
-        return "❓ Уточните: какие входные параметры и что должна возвращать функция?"
+        return "Уточните: какие входные параметры и что должна возвращать функция?"
     
     vague_patterns = [
         r'^напиши функцию$',
@@ -53,10 +49,10 @@ def _needs_clarification(task: str) -> Optional[str]:
         r'^помоги$',              
     ]
     if any(re.search(p, task_lower) for p in vague_patterns):
-        return "❓ Уточните задачу: что именно должна делать функция? Какие аргументы и возврат?"
+        return "Уточните задачу: что именно должна делать функция? Какие аргументы и возврат?"
     
     if 'таблиц' in task_lower and not any(kw in task_lower for kw in ['insert', 'remove', 'sort', 'find', 'встав', 'удал', 'сортир', 'поиск']):
-        return "❓ Уточните: вы хотите вставку, удаление, сортировку или поиск в таблице?"
+        return "Уточните: вы хотите вставку, удаление, сортировку или поиск в таблице?"
     
     return None
 
@@ -90,7 +86,7 @@ async def generate_lua(req: GenerateRequest, service: GenerationServiceDependenc
         
         system_prompt = (
             "Ты эксперт по Lua 5.4. Пиши ТОЛЬКО рабочий, готовый к использованию код.\n"
-            "❗ ПРАВИЛА:\n"
+            "ПРАВИЛА:\n"
             "• Вместо 'x *= y' пиши 'x = x * y'\n"
             "• Всегда закрывай блоки 'end'\n"
             "• Для валидации аргументов используй 'return nil, \"ошибка\"' вместо 'error()'\n"
@@ -102,7 +98,7 @@ async def generate_lua(req: GenerateRequest, service: GenerationServiceDependenc
         
         if req.feedback and history:
             last_code = next((m["content"] for m in reversed(history) if m["role"] == "assistant"), "")
-            prompt = f"Исходный код:\n{last_code}\n\n⚠️ ЗАМЕЧАНИЕ: {req.feedback}\n\nИСПРАВЬ код. Задача: {req.task}"
+            prompt = f"Исходный код:\n{last_code}\n\nЗАМЕЧАНИЕ: {req.feedback}\n\nИСПРАВЬ код. Задача: {req.task}"
         else:
             history_text = "\n".join([f"{m['role']}: {m['content']}" for m in history[-4:]])
             prompt = f"{history_text}\n\nЗадача: {req.task}\n\nКод:" if history_text else f"Задача: {req.task}\n\nКод:"
@@ -115,12 +111,11 @@ async def generate_lua(req: GenerateRequest, service: GenerationServiceDependenc
         
         while attempts < max_attempts:
             attempts += 1
-            # Параметры под попытку (фиксированные для жюри)
             ctx = 4096 if attempts == 1 else 2048
             pred = 256 if attempts == 1 else 300
             
             if attempts > 1 and error:
-                prompt += f"\n\n❗ ОШИБКА: {error}\nИСПРАВЬ И ЗАКРОЙ ВСЕ БЛОКИ."
+                prompt += f"\n\nОШИБКА: {error}\nИСПРАВЬ И ЗАКРОЙ ВСЕ БЛОКИ."
             
             full_response = ""
             async for token in stream_chat(
@@ -131,18 +126,15 @@ async def generate_lua(req: GenerateRequest, service: GenerationServiceDependenc
                 if attempts == 1:
                     yield f"data: {json.dumps({'type': 'token', 'data': token}, ensure_ascii=False)}\n\n"
             
-            # Очистка кода
             raw_code = extract_code_block(full_response)
             code = try_fix_truncated_code(raw_code)
             
-            # Структурная валидация
             if 'function' in code and code.strip().endswith('end'):
                 is_valid = True
                 break
             else:
                 error = "Incomplete code structure"
         
-        # 🔹 4. Sandbox (если запрошено)
         sandbox_result = None
         if req.run_test and is_valid and code.strip():
             try:
@@ -157,11 +149,9 @@ async def generate_lua(req: GenerateRequest, service: GenerationServiceDependenc
             except Exception as e:
                 sandbox_result = SandboxResult(success=False, error=f"Sandbox error: {str(e)}")
         
-        # 🔹 5. Финальный ответ
         total_ms = int((time.time() - start_time) * 1000)
         session_id = req.chat_id or str(uuid.uuid4())
         
-        # Сохраняем в сессию
         if session_id:
             _save_to_session(session_id, "user", req.task)
             _save_to_session(session_id, "assistant", code)
@@ -178,7 +168,6 @@ async def generate_lua(req: GenerateRequest, service: GenerationServiceDependenc
         }, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
         
-        # 🔹 6. Сохранение в БД (не блокирует стрим)
         try:
             if hasattr(service, 'create_generation'):
                 record = await service.create_generation(
@@ -196,8 +185,8 @@ async def generate_lua(req: GenerateRequest, service: GenerationServiceDependenc
                         "latency_ms": total_ms,
                     }
                 )
-                logger.info(f"✅ БД: сохранено {record.id}")
+                logger.info(f"БД: сохранено {record.id}")
         except Exception as e:
-            logger.warning(f"⚠️ БД: пропуск ({e})")
+            logger.warning(f"БД: пропуск ({e})")
     
     return StreamingResponse(event_stream(), media_type="text/event-stream")

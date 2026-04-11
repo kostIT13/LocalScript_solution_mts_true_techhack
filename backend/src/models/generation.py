@@ -58,7 +58,7 @@ class CodeGeneration(Base):
     
     user: Mapped["User"] = relationship(
         "User", 
-        back_populates="generations"  # ← Должно точно совпадать с именем в User
+        back_populates="generations"  
     )
     
     @property

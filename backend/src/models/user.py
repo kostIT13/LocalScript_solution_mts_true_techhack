@@ -33,9 +33,9 @@ class User(Base):
     
     chats: Mapped[List["Chat"]] = relationship(
         "Chat", 
-        back_populates="user",  # ← Должно точно совпадать с именем в Chat
-        cascade="all, delete-orphan",  # При удалении юзера — удалить его чаты
-        lazy="selectin"  # Оптимизация: подгружать чаты сразу при запросе
+        back_populates="user", 
+        cascade="all, delete-orphan",  
+        lazy="selectin" 
     )
 
     generations: Mapped[List["CodeGeneration"]] = relationship(

@@ -4,6 +4,7 @@ from src.api.document.dependencies import DocumentDependency, DocumentServiceDep
 from src.api.auth.dependencies import CurrentUserDependency
 from typing import List
 
+
 router = APIRouter(prefix='/documents', tags=["Documents"])
 
 
@@ -52,7 +53,6 @@ async def upload_document(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-# 🔥 Убрал дублирующийся аргумент document_id — Dependency уже его обрабатывает
 @router.get('/{document_id}', response_model=DocumentResponse)
 async def get_document(document: DocumentDependency):
     return document
@@ -62,7 +62,7 @@ async def get_document(document: DocumentDependency):
 async def delete_document(
     document: DocumentDependency,
     service: DocumentServiceDependency,
-    hard: bool = False  # 🔥 Добавил возможность полного удаления (опционально)
+    hard: bool = False  
 ):
     await service.delete_document(document.id, document.user_id, hard=hard)
     return None
