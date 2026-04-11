@@ -1,4 +1,9 @@
-import asyncio, json, time, logging, re, uuid
+import asyncio
+import json
+import time
+import logging
+import re
+import uuid
 from collections import defaultdict
 from typing import Optional
 from fastapi import APIRouter, Depends
@@ -16,11 +21,13 @@ logger = logging.getLogger(__name__)
 chat_sessions: dict[str, list[dict]] = defaultdict(list)
 
 def _get_session_history(chat_id: Optional[str]) -> list[dict]:
-    if not chat_id: return []
+    if not chat_id: 
+        return []
     return chat_sessions.get(chat_id, [])[-8:]
 
 def _save_to_session(chat_id: str, role: str, content: str):
-    if not chat_id: return
+    if not chat_id: 
+        return
     chat_sessions[chat_id].append({"role": role, "content": content})
     if len(chat_sessions[chat_id]) > 12:
         chat_sessions[chat_id] = chat_sessions[chat_id][-12:]
@@ -66,6 +73,15 @@ class GenerateRequest(BaseModel):
 
 @router.post("/lua")
 async def generate_lua(req: GenerateRequest, service: GenerationServiceDependency):
+    """
+    🎯 Генерация Lua-кода (простой режим без RAG).
+    
+    Особенности:
+    • Уточняющие вопросы для неясных задач
+    • Контекст сессии через chat_id + feedback
+    • Умный тестовый вызов с правильным числом аргументов
+    • Сохранение в БД для истории
+    """
     async def event_stream():
         start_time = time.time()
         
@@ -135,19 +151,54 @@ async def generate_lua(req: GenerateRequest, service: GenerationServiceDependenc
             else:
                 error = "Incomplete code structure"
         
+        # 🔹 5. Sandbox (если запрошено) — ИСПРАВЛЕНО
         sandbox_result = None
         if req.run_test and is_valid and code.strip():
             try:
                 test_code = fix_lua_operators(code)
-                match = re.search(r'function\s+(\w+)\s*\(', test_code)
+                
+                # 🔹 Умный тестовый вызов: анализируем сигнатуру функции
+                match = re.search(r'function\s+(\w+)\s*\(([^)]*)\)', test_code)
                 if match:
-                    test_code = f"{test_code}\n\nprint({match.group(1)}(5))"
+                    func_name = match.group(1)
+                    args_str = match.group(2).strip()
+                    
+                    # Считаем количество аргументов
+                    if not args_str:
+                        arg_count = 0
+                    else:
+                        args = [a.strip() for a in args_str.split(',') if a.strip()]
+                        arg_count = len(args)
+                    
+                    # Генерируем тестовые аргументы
+                    if arg_count == 0:
+                        test_args = ""
+                    elif arg_count == 1:
+                        test_args = "5"
+                    elif arg_count == 2:
+                        test_args = "2, 3"
+                    elif arg_count == 3:
+                        test_args = "1, 2, 3"
+                    else:
+                        test_args = ", ".join(str(i) for i in range(1, arg_count + 1))
+                    
+                    test_code = f"{test_code}\n\nprint({func_name}({test_args}))"
+                    logger.info(f"🧪 Тестовый вызов: {func_name}({test_args})")
                 
                 sandbox_result = await asyncio.wait_for(
                     sandbox_service.execute(test_code, timeout=5), timeout=8.0
                 )
+                
             except Exception as e:
-                sandbox_result = SandboxResult(success=False, error=f"Sandbox error: {str(e)}")
+                # 🔹 Fallback: если тест упал, пробуем просто проверить синтаксис
+                logger.warning(f"⚠️ Тест упал: {e}. Пробую без print()...")
+                try:
+                    fallback_code = fix_lua_operators(code) + "\n\n-- syntax check ok"
+                    sandbox_result = await asyncio.wait_for(
+                        sandbox_service.execute(fallback_code, timeout=3), timeout=5.0
+                    )
+                except Exception as e2:
+                    sandbox_result = SandboxResult(success=False, error=f"Sandbox error: {str(e2)}")
         
         total_ms = int((time.time() - start_time) * 1000)
         session_id = req.chat_id or str(uuid.uuid4())

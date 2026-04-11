@@ -1,0 +1,12 @@
+## Function: super_sum
+This function calculates the sum of three numbers and multiplies the result by 10.
+
+Usage:
+local result = super_sum(1, 2, 3)
+print(result) -- Output: 60
+
+Code Example:
+function super_sum(a, b, c)
+    return (a + b + c) * 10
+end
+

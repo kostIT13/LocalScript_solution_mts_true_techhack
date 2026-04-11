@@ -1,5 +1,3 @@
-# Lua Manual - Custom Functions
-
 ## Function: super_sum
 This function calculates the sum of three numbers and multiplies the result by 10.
 
@@ -11,3 +9,4 @@ Code Example:
 function super_sum(a, b, c)
     return (a + b + c) * 10
 end
+
