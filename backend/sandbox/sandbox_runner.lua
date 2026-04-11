@@ -1,5 +1,4 @@
 -- backend/sandbox/sandbox_runner.lua
-
 -- 🔹 Попытка загрузить cjson
 local cjson_ok, cjson = pcall(require, "cjson")
 if not cjson_ok then
@@ -20,6 +19,7 @@ local safe_env = {
         end
         io.write("\n")
     end,
+    error = error,  -- 🔹 ДОБАВЛЕНО: позволяет коду использовать error() безопасно
     type = type,
     tostring = tostring,
     tonumber = tonumber,
@@ -28,7 +28,7 @@ local safe_env = {
     select = select,
     unpack = table.unpack or unpack,
     
-    -- Безопасные библиотеки
+    -- Математика и строки
     math = math,
     string = string,
     table = table,
@@ -89,7 +89,7 @@ end)
 local execution_time = math.min(os.clock() - start_time, TIMEOUT)
 local output = {
     success = result,
-    output = result and "OK" or nil,  -- 🔹 Поле 'output', как ждёт Python
+    output = result and "OK" or nil,
     error = err and tostring(err) or nil,
     execution_time = execution_time,
 }
