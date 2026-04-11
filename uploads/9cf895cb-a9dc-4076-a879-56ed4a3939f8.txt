@@ -1,0 +1,31 @@
+Tables (таблицы) — это основная структура данных в Lua. Они могут быть:
+- Массивами (arrays)
+- Словарями (dictionaries/hash maps)
+- Объектами (objects)
+- Модулями (modules)
+
+## Синтаксис
+
+### Создание таблиц
+
+```lua
+-- Пустая таблица
+local t = {}
+
+-- Таблица с начальными значениями
+local person = {
+    name = "Alice",
+    age = 30,
+    city = "Moscow"
+}
+
+-- Таблица как массив
+local numbers = {1, 2, 3, 4, 5}
+
+-- Смешанная таблица
+local mixed = {
+    "first",
+    "second",
+    key = "value",
+    [100] = "hundred"
+}

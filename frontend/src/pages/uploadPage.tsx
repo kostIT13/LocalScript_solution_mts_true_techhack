@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { uploadApi }  from '../services/uploadApi';
+import { uploadApi } from '../services/uploadApi';
 import type { UploadedDocument } from '../types';
 import '../index.css';
 
@@ -11,27 +11,40 @@ export default function UploadPage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   useEffect(() => {
+    console.log('📦 UploadPage mounted - loading documents...');
     loadDocuments();
   }, []);
 
   const loadDocuments = async () => {
     try {
+      console.log('📚 Загрузка списка документов...');
       const docs = await uploadApi.getDocuments();
+      console.log('✅ Загружено документов:', docs.length);
+      console.log('📄 Документы:', docs);
       setDocuments(docs);
     } catch (error) {
-      console.error('Failed to load documents:', error);
+      console.error('❌ Ошибка загрузки списка документов:', error);
     }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setFiles(Array.from(e.target.files));
+      const selectedFiles = Array.from(e.target.files);
+      console.log('📁 Выбрано файлов:', selectedFiles.length);
+      selectedFiles.forEach(f => {
+        console.log(`  - ${f.name} (${f.size} байт, ${f.type})`);
+      });
+      setFiles(selectedFiles);
     }
   };
 
   const handleUpload = async () => {
-    if (files.length === 0) return;
+    if (files.length === 0) {
+      console.warn('⚠️ Нет файлов для загрузки');
+      return;
+    }
 
+    console.log('🚀 Начало загрузки файлов...');
     setUploading(true);
     setProgress(0);
     setMessage(null);
@@ -40,20 +53,33 @@ export default function UploadPage() {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         
+        console.log(`📤 Загрузка файла ${i + 1}/${files.length}:`, file.name);
+        
         await uploadApi.uploadDocument(file, (progressEvent) => {
           const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           setProgress(percent);
+          if (percent % 10 === 0) {  // Логируем каждые 10%
+            console.log(`⏳ Прогресс загрузки ${file.name}: ${percent}%`);
+          }
         });
 
+        console.log('✅ Файл загружен:', file.name);
+        
         setMessage({
           type: 'success',
           text: `✅ Файл "${file.name}" успешно загружен и индексируется!`
         });
       }
 
+      console.log('🔄 Все файлы загружены, обновляем список...');
       setFiles([]);
+      
+      // 🔹 ВАЖНО: Обновить список после загрузки
       await loadDocuments();
+      
+      console.log('✅ Загрузка завершена, документов всего:', documents.length);
     } catch (error) {
+      console.error('❌ Ошибка загрузки:', error);
       setMessage({
         type: 'error',
         text: `❌ Ошибка загрузки: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -61,15 +87,19 @@ export default function UploadPage() {
     } finally {
       setUploading(false);
       setProgress(0);
+      console.log('🏁 Загрузка завершена (finally)');
     }
   };
 
   const handleDelete = async (docId: string) => {
+    console.log('🗑️ Удаление документа:', docId);
     try {
       await uploadApi.deleteDocument(docId);
+      console.log('✅ Документ удалён:', docId);
       setMessage({ type: 'success', text: '🗑️ Документ удалён' });
       await loadDocuments();
     } catch (error) {
+      console.error('❌ Ошибка удаления:', error);
       setMessage({
         type: 'error',
         text: `❌ Ошибка удаления: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -78,6 +108,7 @@ export default function UploadPage() {
   };
 
   const removeFile = (index: number) => {
+    console.log('🗑️ Удаление файла из списка:', files[index].name);
     setFiles(files.filter((_, i) => i !== index));
   };
 
