@@ -7,6 +7,10 @@
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/Docker-24.0+-blue.svg)](https://www.docker.com/)
 [![Ollama](https://img.shields.io/badge/Ollama-qwen2.5--coder:1.5b-orange.svg)](https://ollama.ai/)
+[![Hackathon](https://img.shields.io/badge/🏆%20TrueTech%20Hack-2026-red.svg)](https://git.truetecharena.ru/)
+[![Author](https://img.shields.io/badge/👤%20bogomol-author-purple.svg)](https://git.truetecharena.ru/tta/true-tech-hack2026-localscript/bogomol/task-repo)
+[![MWS Octapi](https://img.shields.io/badge/MWS%20Octapi-API-red.svg)](https://octapi.mws.ru/)
+[![Lua 5.4](https://img.shields.io/badge/Lua-5.4-blue.svg)](https://www.lua.org/)
 
 
 ## 📋 О проекте
