@@ -98,7 +98,7 @@ docker-compose ps
 ### 4️⃣ Открыть интерфейс
 ```bash
 🌐 Фронтенд: http://localhost:5173
-🔧 Swagger API: http://localhost:8000/docs
+🔧 Swagger API: http://localhost:8080/docs
 📊 ChromaDB UI: http://localhost:8001
 🤖 Ollama API: http://localhost:11434
 ```
@@ -130,7 +130,7 @@ NUM_BATCH=1
 NUM_PARALLEL=1
 OLLAMA_LLM_MODEL=qwen2.5-coder:1.5b
 
-VITE_API_URL=http://localhost:8000
+VITE_API_URL=http://localhost:8080
 ```
 
 ## 💻 Использование
@@ -151,6 +151,10 @@ Email: user@example.com
 Задача: "Напиши функцию sum(a, b) которая возвращает a + b"
 ```
 ## 📋 Примеры использования
+**Основный эндпоинты:**
+* post: /api/v1/generate/lua
+* post: /api/v1/generate/lua_rag
+
 ### Пример 1: Простая функция
 ### Запрос:
 ```bash
@@ -253,25 +257,118 @@ local person = {
 LocalScript/
 ├── backend/
 │   ├── src/
-│   │   ├── api/           # FastAPI routers
-│   │   ├── services/      # Бизнес-логика
-│   │   ├── models/        # SQLAlchemy модели
-│   │   └── core/          # Конфиг, логирование
-│   ├── tests/             # Тесты
+│   │   ├── api/
+│   │   │  ├── auth/
+│   │   │  │  ├── __init__.py
+│   │   │  │  ├── endpoints.py
+│   │   │  │  ├── dependencies.py
+│   │   │  │  └── schemas.py
+│   │   │  ├── chat/
+│   │   │  │  ├── __init__.py
+│   │   │  │  ├── endpoints.py
+│   │   │  │  ├── dependencies.py
+│   │   │  │  └── schemas.py
+│   │   │  ├── document/
+│   │   │  │  ├── __init__.py
+│   │   │  │  ├── endpoints.py
+│   │   │  │  ├── dependencies.py
+│   │   │  │  └── schemas.py
+│   │   │  ├── generate/
+│   │   │  │  ├── __init__.py
+│   │   │  │  ├── endpoints.py
+│   │   │  │  ├── rag_generate.py
+│   │   │  │  ├── dependencies.py
+│   │   │  │  └── schemas.py
+│   │   │  ├── user/
+│   │   │  │  ├── __init__.py
+│   │   │  │  ├── endpoints.py
+│   │   │  │  ├── dependencies.py
+│   │   │  │  └── schemas.py
+│   │   ├── services/
+│   │   │  ├── __init__.py
+│   │   │  │  ├── agent/
+│   │   │  │  │  ├── __init__.py
+│   │   │  │  │  ├── fix_code.py
+│   │   │  │  │  └── lua_agent_graph.py
+│   │   │  │  ├── user/
+│   │   │  │  │  ├── __init__.py
+│   │   │  │  │  ├── base.py
+│   │   │  │  │  ├── user_service.py
+│   │   │  │  │  └── repository.py
+│   │   │  │  ├── generation/
+│   │   │  │  │  ├── __init__.py
+│   │   │  │  │  ├── base.py
+│   │   │  │  │  ├── generation_service.py
+│   │   │  │  │  └── repository.py
+│   │   │  │  ├── message/
+│   │   │  │  │  ├── __init__.py
+│   │   │  │  │  ├── base.py
+│   │   │  │  │  ├── message_service.py
+│   │   │  │  │  └── repository.py
+│   │   │  │  ├── chat/
+│   │   │  │  │  ├── __init__.py
+│   │   │  │  │  ├── base.py
+│   │   │  │  │  ├── chat_service.py
+│   │   │  │  │  └── repository.py
+│   │   │  │  ├── document/
+│   │   │  │  │  ├── __init__.py
+│   │   │  │  │  ├── base.py
+│   │   │  │  │  ├── document_service.py
+│   │   │  │  │  └── repository.py
+│   │   │  │  ├── rag/
+│   │   │  │  │  ├── __init__.py
+│   │   │  │  │  ├── chroma_client.py
+│   │   │  │  │  ├── dependencies.py
+│   │   │  │  │  ├── document_processor.py
+│   │   │  │  │  ├── embedding_service.py
+│   │   │  │  │  ├── ollama_client.py
+│   │   │  │  │  ├── rag_chank.py
+│   │   │  │  │  └── rag_service.py
+│   │   │  │  ├── sandbox/
+│   │   │  │  │  ├── __init__.py
+│   │   │  │  │  └── sandbox_service.py
+│   │   │  │  ├── llm/
+│   │   │  │  │  ├── __init__.py
+│   │   │  │  │  └── generator.py 
+│   │   │  │  └── promts/
+│   │   │  │  │  ├── __init__.py
+│   │   │  │  │  ├── lua_agent_system_prompt.py
+│   │   │  │  │  └── lua_rag_agent_prompt.py
+│   │   ├── models/
+│   │   │  ├── __init__.py
+│   │   │  ├── user.py
+│   │   │  ├── document.py
+│   │   │  ├── chat.py
+│   │   │  ├── message.py
+│   │   │  └── generation.py           
+│   │   └── core/
+│   │   │  ├── __init__.py 
+│   │   │  ├── database.py
+│   │   │  ├── logging_settings.py
+│   │   │  └── config.py 
 │   ├── Dockerfile
-│   └── pyproject.toml
+│   ├── sandbox/
+│   │   ├── Dockerfile
+│   │   └── sandbox_runner.lua
+│   ├── alembic/
+│   │   ├── env.py
+│   │   └── script.py.mako
+│   ├── init.py
+│   ├── alembic.ini
+│   └── requirements.txt
 ├── frontend/
 │   ├── src/
-│   │   ├── components/    # React компоненты
-│   │   ├── services/      # API клиенты
-│   │   └── pages/         # Страницы
+│   │   ├── components/   
+│   │   ├── services/     
+│   │   └── pages/         
 │   ├── nginx.conf
 │   ├── Dockerfile
-│   └── package.json
-├── sandbox/               # Lua 5.4 Docker image
+│   └── package.json              #
 ├── docker-compose.yml
 ├── .env.example
+├── requirements.txt
 └── README.md
+
 ```
 
 ## 🛠️ Стек технологий
