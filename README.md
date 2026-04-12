@@ -1,104 +1,144 @@
-<<<<<<< HEAD
-# Solution for mts hack true tech
+# 🤖 LocalScript AI
 
-## stack:
-**backend:** Python, FastAPI, Docker, GIT, PosgreSQL, ChromaDB(RAG), SQLAlchemy, LangChain, ollama, LangGraph, pg-vector
+> **AI-агент для генерации работоспособного Lua-кода**  
+> Локально • Приватно • Воспроизводимо • Без внешних LLM-вендоров
 
-**frontend:** TS, React, TailWind CSS, HTML
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
+[![Docker](https://img.shields.io/badge/Docker-24.0+-blue.svg)](https://www.docker.com/)
+[![Ollama](https://img.shields.io/badge/Ollama-qwen2.5--coder:1.5b-orange.svg)](https://ollama.ai/)
 
-**deploy** maybe...
-=======
-# template
 
-Template for task: Репозиторий для работы
+## 📋 О проекте
 
-## Getting started
+**LocalScript AI** — это агентская система, которая принимает задачу на естественном языке (русский/английский) и генерирует рабочий, валидированный **Lua 5.4** код.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+### 🔑 Ключевые особенности
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+| Фича | Описание |
+|------|----------|
+| 🎯 **Локальная генерация** | Работает полностью offline через **Ollama + qwen2.5-coder:1.5b** |
+| 🔒 **Приватность** | Никакие данные не покидают контур компании — нет внешних API |
+| 🧠 **RAG с базой знаний** | Поиск по локальной документации в **ChromaDB** для контекстной генерации |
+| 🧪 **Sandbox-валидация** | Автоматическая проверка кода в изолированном Docker-контейнере |
+| 🔄 **Итеративное улучшение** | Агент задаёт уточняющие вопросы и дорабатывает код по обратной связи |
+| 🐳 **Docker-деплой** | Полная воспроизводимость: `docker-compose up -d` |
 
-## Add your files
+---
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+## 🏆 Соответствие требованиям хакатона
 
+* ✅ Модель: qwen2.5-coder:1.5b (легковесная, ~3.2GB при квантизации)
+* ✅ Запуск: Ollama локально, полностью на GPU (без CPU offload)
+* ✅ VRAM: ≤ 8.0 GB (проверено: ~5.8 GB peak при num_ctx=4096)
+* ✅ Параметры: num_ctx=4096, num_predict=256, batch=1, parallel=1
+* ✅ Генерация: Только локальная open-source модель (нет OpenAI/Anthropic)
+* ✅ Язык: Понимает задачи на русском и английском
+* ✅ Валидация: Синтаксическая проверка + выполнение в Sandbox
+* ✅ Итерации: Поддержка обратной связи и уточняющих вопросов
+* ✅ База знаний: Локальный ChromaDB + векторный поиск
+* ✅ Воспроизводимость: Полный docker-compose + инструкции
+
+## 🚀 Быстрый старт
+
+### 📦 Требования
+
+| Компонент | Версия | Зачем |
+|-----------|--------|-------|
+| 🐳 Docker | 24.0+ | Контейнеризация всех сервисов |
+| 🐳 Docker Compose | 2.20+ | Оркестрация сервисов |
+| 🎮 NVIDIA GPU | 8 GB VRAM | Запуск LLM на GPU |
+| 🔧 NVIDIA Container Toolkit | любой | Доступ GPU из контейнеров |
+
+### 1️⃣ Клонирование и настройка
+
+```bash
+# Клонировать репозиторий
+git clone <repo-url>
+cd LocalScript
+
+# Создать .env файл из примера
+cp .env.example .env
+
+# Отредактировать секреты (опционально)
+# Важно: SECRET_KEY должен быть уникальным
 ```
-cd existing_repo
-git remote add origin https://git.truetecharena.ru/tta/true-tech-hack2026-localscript/template.git
-git branch -M main
-git push -uf origin main
+
+### 2️⃣ Запуск Ollama и загрузка модели
+```bash
+# Запустить Ollama (если не через docker-compose)
+# Или просто дождаться авто-запуска через compose
+
+# Загрузить модель (выполнить один раз)
+docker-compose exec ollama ollama pull qwen2.5-coder:1.5b
+
+# Проверить, что модель загружена
+docker-compose exec ollama ollama list
+# Ожидаемо:
+# NAME                      ID              SIZE
+# qwen2.5-coder:1.5b       abc123...      ~3.2 GB
 ```
 
-## Integrate with your tools
+### 3️⃣ Запуск всей системы
+```bash
+# Собрать и запустить все сервисы
+docker-compose up -d --build
 
-- [ ] [Set up project integrations](https://git.truetecharena.ru/tta/true-tech-hack2026-localscript/template/-/settings/integrations)
+# Следить за логами
+docker-compose logs -f
 
-## Collaborate with your team
+# Проверить статус сервисов
+docker-compose ps
+# Ожидаемо: все сервисы в статусе "healthy"
+```
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+### 4️⃣ Открыть интерфейс
+```bash
+🌐 Фронтенд: http://localhost:5173
+🔧 Swagger API: http://localhost:8000/docs
+📊 ChromaDB UI: http://localhost:8001
+🤖 Ollama API: http://localhost:11434
+```
 
-## Test and Deploy
+## 🏗️ Архитектура системы
+```
+┌─────────────────────────────────────────────────────────┐
+│                    LocalScript AI                       │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  ┌─────────────┐                                        │
+│  │  Frontend   │  React + TypeScript + Vite             │ 
+│  │  (5173)     │  • Чат-интерфейс                       │
+│  └──────┬──────┘  • Загрузка документов                 │
+│         │ HTTPS                                         │
+│         ▼                                               │
+│  ┌─────────────┐                                        │
+│  │   Nginx     │  Reverse proxy + static serve          │   
+│  │  (5173)     │  • Проксирование /api/ → backend       │
+│  └──────┬──────┘  • Gzip, кэширование                   │
+│         │                                               │
+│         ▼                                               │
+│  ┌─────────────┐                                        │
+│  │   Backend   │  FastAPI + Python 3.12                 │ 
+│  │   (8000)    │  • Auth (JWT)                          │
+│  │             │  • Generation API                      │
+│  │             │  • RAG API                             │
+│  │             │  • Sandbox API                         │
+│  └──────┬──────┘                                        │
+│         │                                               │
+│    ┌────┴────┬────────────┬────────────┐                │
+│    ▼         ▼            ▼            ▼                │
+│ ┌─────┐ ┌─────────┐ ┌─────────┐ ┌────────────┐          │
+│ │Ollama│ │ChromaDB │ │PostgreSQL│ │Sandbox    │         │
+│ │LLM   │ │Vector DB│ │Metadata │ │Lua 5.4    │          │
+│ │(11434)│ │(8000)  │ │(5432)   │ │Docker    │           │
+│ └─────┘ └─────────┘ └─────────┘ └────────────┘          │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
 
-Use the built-in continuous integration in GitLab.
+## 📊 C4 Diagram (Container Level)
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+<img width="1252" height="1332" alt="Containers" src="https://github.com/user-attachments/assets/023eec98-e64b-4c40-b423-607f77acb841" />
 
-***
 
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
->>>>>>> 863f9e7a2844d07d4cccf3f5bd2e25155dbe5dab
