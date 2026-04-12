@@ -98,7 +98,7 @@ docker-compose ps
 ### 4️⃣ Открыть интерфейс
 ```bash
 🌐 Фронтенд: http://localhost:5173
-🔧 Swagger API: http://localhost:8000/docs
+🔧 Swagger API: http://localhost:8080/docs
 📊 ChromaDB UI: http://localhost:8001
 🤖 Ollama API: http://localhost:11434
 ```
@@ -130,7 +130,7 @@ NUM_BATCH=1
 NUM_PARALLEL=1
 OLLAMA_LLM_MODEL=qwen2.5-coder:1.5b
 
-VITE_API_URL=http://localhost:8000
+VITE_API_URL=http://localhost:8080
 ```
 
 ## 💻 Использование
@@ -151,6 +151,10 @@ Email: user@example.com
 Задача: "Напиши функцию sum(a, b) которая возвращает a + b"
 ```
 ## 📋 Примеры использования
+**Основный эндпоинты:**
+* post: /api/v1/generate/lua
+* post: /api/v1/generate/lua_rag
+
 ### Пример 1: Простая функция
 ### Запрос:
 ```bash
