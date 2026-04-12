@@ -346,3 +346,29 @@ LocalScript/
 
 ---
 
+## 🤝 Вклад в проект
+
+* 1. Форкни репозиторий
+* 2. Создай ветку: `git checkout -b feature/my-feature`
+* 3. Закоммить: `git commit -m 'feat: добавить фичу'`
+* 4. Запушь: `git push origin feature/my-feature`
+* 5. Открой Pull Request
+
+**📋 Code style: `uv run ruff format . && uv run ruff check . --fix`**
+
+## 👥 Авторы и благодарности
+
+### 🎯 Команда
+- **kostIT13 (Константин)** — архитектура, backend, RAG, sandbox
+- **bogomol** — frontend, UI/UX, интеграция
+
+### 🙏 Благодарности
+- [Ollama](https://ollama.ai/) — локальный запуск LLM
+- [ChromaDB](https://www.trychroma.com/) — векторная база
+- [FastAPI](https://fastapi.tiangolo.com/) — backend фреймворк
+- [makeareadme.com](https://www.makeareadme.com/) — шаблон README
+
+### 🏆 Хакатон
+Проект создан для **TrueTech Hackathon 2026** (MTS True Tech).  
+Спасибо организаторам за поддержку! 🚀
+
