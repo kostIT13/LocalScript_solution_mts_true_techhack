@@ -126,6 +126,19 @@ services:
       - app_network
     restart: unless-stopped
 
+  frontend:
+    build: ./frontend
+    container_name: my_frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000  
+    depends_on:
+      - backend
+    networks:
+      - app_network
+    restart: unless-stopped
+
 networks:
   app_network:
     driver: bridge
