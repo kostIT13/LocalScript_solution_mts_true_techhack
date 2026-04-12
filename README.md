@@ -363,7 +363,7 @@ LocalScript/
 │   │   └── pages/         
 │   ├── nginx.conf
 │   ├── Dockerfile
-│   └── package.json              #
+│   └── package.json              
 ├── docker-compose.yml
 ├── .env.example
 ├── requirements.txt
