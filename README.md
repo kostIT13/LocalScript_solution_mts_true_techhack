@@ -75,10 +75,16 @@ docker-compose logs -f  # опционально: следить за логам
 
 ### 3️⃣ Загрузка модели (выполнить один раз)
 ```bash
-# Загрузить модель (~3.2 GB)
+### 4️⃣ Загрузка моделей (выполнить один раз)
+
+```bash
+# 1. Загрузить модель для генерации кода (~3.2 GB)
 docker-compose exec ollama ollama pull qwen2.5-coder:1.5b
 
-# Проверить, что модель загружена
+# 2. Загрузить модель для векторного поиска RAG (~270 MB)
+docker-compose exec ollama ollama pull nomic-embed-text
+
+# 3. Проверить, что обе модели загружены
 docker-compose exec ollama ollama list
 # Ожидаемо:
 # NAME                      ID              SIZE
