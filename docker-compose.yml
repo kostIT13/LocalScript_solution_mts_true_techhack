@@ -62,7 +62,7 @@ services:
         - PYPI_INDEX_URL=${PYPI_INDEX_URL:-https://pypi.org/simple}
     container_name: localscript_backend
     ports:
-      - "8000:8000"
+      - "8080:8000"
     volumes:
       - ./backend/src:/app/src:ro
       - ./pyproject.toml:/app/pyproject.toml:ro
@@ -132,7 +132,7 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - VITE_API_URL=http://localhost:8000  
+      - VITE_API_URL=http://localhost:8080
     depends_on:
       - backend
     networks:
