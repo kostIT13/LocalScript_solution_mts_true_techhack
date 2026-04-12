@@ -456,8 +456,8 @@ LocalScript/
 ## 👥 Авторы и благодарности
 
 ### 🎯 Команда
-- **kostIT13 (Константин)** — архитектура, backend, RAG, sandbox
-- **bogomol** — frontend, UI/UX, интеграция
+- **Константин** — архитектура, backend, RAG, sandbox
+- **Ярослва** — frontend, UI/UX, интеграция
 
 ### 🙏 Благодарности
 - [Ollama](https://ollama.ai/) — локальный запуск LLM
