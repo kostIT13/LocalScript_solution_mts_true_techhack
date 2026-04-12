@@ -24,7 +24,6 @@
 | 🔄 **Итеративное улучшение** | Агент задаёт уточняющие вопросы и дорабатывает код по обратной связи |
 | 🐳 **Docker-деплой** | Полная воспроизводимость: `docker-compose up -d` |
 
----
 
 ## 🏆 Соответствие требованиям хакатона
 
@@ -98,6 +97,91 @@ docker-compose ps
 🔧 Swagger API: http://localhost:8000/docs
 📊 ChromaDB UI: http://localhost:8001
 🤖 Ollama API: http://localhost:11434
+```
+
+### Обязательно посмотрите настройки в .env.example
+```bash
+LOG_LEVEL=INFO
+
+POSTGRES_DB=Mydatabase123
+POSTGRES_HOST=Mydb123
+POSTGRES_PASSWORD=Mypass123
+POSTGRES_USER=Myuser123
+DATABASE_URL=postgresql+asyncpg://Myuser123:Mypass123@Mydb123:5432/Mydatabase123
+
+SECRET_KEY=YOUR_SECRET_KEY
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+OLLAMA_HOST=http://ollama:99999
+OLLAMA_EMBEDDING_MODEL=nomic-embed-text
+OLLAMA_LLM_MODEL=YOUR_LLM
+
+CHROMA_HOST=chromadb
+CHROMA_PORT=8000
+
+NUM_CTX=4096
+NUM_PREDICT=256
+NUM_BATCH=1
+NUM_PARALLEL=1
+OLLAMA_LLM_MODEL=qwen2.5-coder:1.5b
+
+VITE_API_URL=http://localhost:8000
+```
+
+## 💻 Использование
+
+### 1. Откройте веб-интерфейс
+```bash
+# После запуска docker-compose up -d
+# Откройте в браузере:
+http://localhost:5173
+```
+### 2. Зарегистрируйтесь или войдите
+```bash
+Email: user@example.com
+Пароль: secure123
+```
+### 3. Создайте первый запрос
+```bash
+Задача: "Напиши функцию sum(a, b) которая возвращает a + b"
+```
+## 📋 Примеры использования
+### Пример 1: Простая функция
+### Запрос:
+```bash
+Напиши функцию sum(a, b) которая возвращает a + b
+```
+### Ожидаемый результат
+```bash
+function sum(a, b)
+    return a + b
+end
+```
+### Sandbox тест:
+```bash
+✅ print(sum(2, 3)) → 5
+✅ valid: true
+✅ timing_ms: 1850
+```
+### Пример: RAG-запрос с базой знаний
+### Предварительно: Загрузите документ lua_tables.md через раздел "📚 Документы"
+### Запрос:
+```bash
+Как создать таблицу с начальными значениями
+```
+### Ожидаемый результат (с RAG-контекстом):
+```bash
+local person = {
+    name = "Alice",
+    age = 30,
+    city = "Moscow"
+}
+```
+### RAG источники:
+```bash
+📚 tables.txt (score: 0.82)
+📚 tables.txt (score: 0.71)
 ```
 
 ## 🏗️ Архитектура системы
