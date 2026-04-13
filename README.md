@@ -457,7 +457,7 @@ LocalScript/
 
 ### 🎯 Команда
 - **Константин** — архитектура, backend, RAG, sandbox
-- **Ярослва** — frontend, UI/UX, интеграция
+- **Ярослав** — frontend, UI/UX, интеграция
 
 ### 🙏 Благодарности
 - [Ollama](https://ollama.ai/) — локальный запуск LLM

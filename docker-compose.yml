@@ -148,3 +148,4 @@ volumes:
   chroma_data:      
   ollama_data:     
   postgres_data:    
+  
