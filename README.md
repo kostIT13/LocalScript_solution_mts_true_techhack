@@ -53,46 +53,42 @@
 | 🎮 NVIDIA GPU | 8 GB VRAM | Запуск LLM на GPU |
 | 🔧 NVIDIA Container Toolkit | любой | Доступ GPU из контейнеров |
 
+## 🚀 Быстрый старт
+
 ### 1️⃣ Клонирование и настройка
 
 ```bash
-# Клонировать репозиторий
-git clone <repo-url>
+git clone https://git.truetecharena.ru/tta/true-tech-hack2026-localscript/bogomol/task-repo.git
 cd LocalScript
-
-# Создать .env файл из примера
 cp .env.example .env
-
-# Отредактировать секреты (опционально)
-# Важно: SECRET_KEY должен быть уникальным
 ```
 
-### 2️⃣ Запуск Ollama и загрузка модели
-```bash
-# Запустить Ollama (если не через docker-compose)
-# Или просто дождаться авто-запуска через compose
+### 2️⃣ Запуск системы
 
-# Загрузить модель (выполнить один раз)
+```bash
+# Запустить все сервисы
+docker-compose up -d --build
+
+# Подождать ~30-60 секунд (инициализация БД + миграции)
+docker-compose logs -f  # опционально: следить за логами
+```
+
+### 3️⃣ Загрузка модели (выполнить один раз)
+```bash
+### 4️⃣ Загрузка моделей (выполнить один раз)
+
+```bash
+# 1. Загрузить модель для генерации кода (~3.2 GB)
 docker-compose exec ollama ollama pull qwen2.5-coder:1.5b
 
-# Проверить, что модель загружена
+# 2. Загрузить модель для векторного поиска RAG (~270 MB)
+docker-compose exec ollama ollama pull nomic-embed-text
+
+# 3. Проверить, что обе модели загружены
 docker-compose exec ollama ollama list
 # Ожидаемо:
 # NAME                      ID              SIZE
 # qwen2.5-coder:1.5b       abc123...      ~3.2 GB
-```
-
-### 3️⃣ Запуск всей системы
-```bash
-# Собрать и запустить все сервисы
-docker-compose up -d --build
-
-# Следить за логами
-docker-compose logs -f
-
-# Проверить статус сервисов
-docker-compose ps
-# Ожидаемо: все сервисы в статусе "healthy"
 ```
 
 ### 4️⃣ Открыть интерфейс
