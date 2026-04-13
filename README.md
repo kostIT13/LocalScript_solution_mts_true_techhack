@@ -459,7 +459,6 @@ LocalScript/
 - [Ollama](https://ollama.ai/) — локальный запуск LLM
 - [ChromaDB](https://www.trychroma.com/) — векторная база
 - [FastAPI](https://fastapi.tiangolo.com/) — backend фреймворк
-- [makeareadme.com](https://www.makeareadme.com/) — шаблон README
 
 ### 🏆 Хакатон
 Проект создан для **TrueTech Hackathon 2026** (MTS True Tech).  
