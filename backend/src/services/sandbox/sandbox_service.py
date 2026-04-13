@@ -7,6 +7,7 @@ import shlex
 import time
 from typing import Optional
 from pydantic import BaseModel, ConfigDict
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -110,11 +111,30 @@ class SandboxService:
                 except Exception as cleanup_error:
                     logger.warning(f"Не удалось удалить контейнер: {cleanup_error}")
 
+
+    def _is_lowcode_pattern(self, code: str) -> bool:
+        lowcode_patterns = [
+            r'wf\.vars',
+            r'wf\.initVariables',
+            r'_utils\.array\.new\(\)',
+            r'_utils\.array\.markAsArray',
+            r'ensureArray',
+            r'ensureAllItemsAreArrays',
+        ]
+        return any(re.search(p, code) for p in lowcode_patterns)
+    
     async def execute(self, code: str, timeout: int = 5) -> SandboxResult:
         if not code or not code.strip():
             return SandboxResult(success=False, error="Empty code")
-        
+        if self._is_lowcode_pattern(code):
+            logger.info("Пропускаю Sandbox: код использует конструкции LowCode (wf.*, _utils.*)")
+            return SandboxResult(
+                success=True,
+                output="Skipped: LowCode pattern detected (wf/_utils not available in sandbox)",
+                execution_time=0.0,
+                skipped=True 
+            )
+    
         return await asyncio.to_thread(self._execute_sync, code, timeout)
-
-
+    
 sandbox_service = SandboxService()

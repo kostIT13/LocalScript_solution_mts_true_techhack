@@ -38,7 +38,9 @@ services:
       - app_network
 
   ollama:
-    image: ollama/ollama:latest
+    build:
+      context: ./backend/docker/ollama 
+      dockerfile: Dockerfile
     container_name: localscript_ollama
     ports:
       - "11434:11434"
@@ -46,13 +48,13 @@ services:
       - ollama_data:/root/.ollama
     environment:
       - OLLAMA_HOST=0.0.0.0
-      - OLLAMA_KEEP_ALIVE=0  
+      - OLLAMA_KEEP_ALIVE=0
     networks:
       - app_network
     deploy:
       resources:
         limits:
-          memory: 8G  
+          memory: 8G
 
   backend:
     build:
@@ -88,6 +90,7 @@ services:
       - db
       - ollama
       - sandbox
+      - chromadb
     networks:
       - app_network
     restart: unless-stopped
@@ -144,8 +147,7 @@ networks:
     driver: bridge
 
 volumes:
-  backend_venv:     
-  chroma_data:      
-  ollama_data:     
-  postgres_data:    
-  
+  backend_venv:
+  chroma_data:
+  ollama_data:
+  postgres_data:

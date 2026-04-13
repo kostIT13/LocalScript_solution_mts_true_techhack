@@ -10,6 +10,7 @@ from src.services.prompts.lua_rag_agent_prompt import build_rag_prompt
 from src.services.rag.rag_service import RAGChunk, rag_service
 from src.services.sandbox.sandbox_service import sandbox_service, SandboxResult
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -68,10 +69,24 @@ def extract_code_block(text: str) -> str:
 
 
 def try_fix_truncated_code(code: str) -> str:
-    if not code or code.strip().endswith('end'):
+    if not code:
         return code
-    if not any(code.strip().endswith(kw) for kw in ['end', 'then', 'do', 'else', ')', '"', "'"]):
+    
+    code = code.strip()
+    
+    if 'function' not in code:
+        code = re.sub(r'(\s*\n\s*end\s*)+$', '', code).strip()
+        return code
+    
+    if code.endswith('end'):
+        return code
+    
+    opens = len(re.findall(r'\b(function|if|while|for|repeat)\b', code))
+    closes = len(re.findall(r'\bend\b', code))
+    
+    if opens > closes:
         return code + "\nend"
+    
     return code
 
 
@@ -253,7 +268,7 @@ async def generation_node(state: AgentState) -> AgentState:
     except Exception as e:
         logger.error(f"Gen error: {e}", exc_info=True)
         return {
-            "messages": [AIMessage(content=f"⚠️ Ошибка: {str(e)}")],
+            "messages": [AIMessage(content=f"Ошибка: {str(e)}")],
             "current_code": "",
             "validation_error": str(e),
             "attempts": state.get("attempts", 0) + 1

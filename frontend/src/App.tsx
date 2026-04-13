@@ -1,9 +1,7 @@
-// frontend/src/App.tsx
-
 import React, { useState, useRef, useEffect } from 'react';
 import { apiClient } from './services/api';
-import { authService } from './services/auth';  // 🔹 Импорт
-import AuthPage from './pages/AuthPage';  // 🔹 Импорт
+import { authService } from './services/auth';  
+import AuthPage from './pages/AuthPage';  
 import UploadPage from './pages/uploadPage';
 import type { ChatMessage, DoneMessage } from './types';
 import './index.css';
@@ -13,7 +11,6 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState<'chat' | 'upload'>('chat');
   const [currentUser, setCurrentUser] = useState(authService.getCachedUser());
   
-  // ...остальные стейты (task, messages, и т.д.)...
   const [task, setTask] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatId, setChatId] = useState<string | null>(null);
@@ -39,20 +36,17 @@ export default function App() {
     setUseRag(mode === 'rag');
   }, [mode]);
 
-  // 🔹 Обработчик успешной аутентификации
   const handleAuthenticated = () => {
     setIsAuthenticated(true);
     setCurrentUser(authService.getCachedUser());
   };
 
-  // 🔹 Logout
   const handleLogout = () => {
     authService.logout();
     setIsAuthenticated(false);
     setCurrentUser(null);
   };
 
-  // ...остальные функции (handleGenerate, handleFeedbackSubmit, и т.д.)...
   const handleGenerate = async () => {
     if (!task.trim() && !feedback.trim()) return;
     if (isLoading) return;
@@ -218,7 +212,6 @@ export default function App() {
         {mode === 'rag' ? '📚 Режим с базой знаний (RAG)' : '⚡ Быстрый режим (без RAG)'}
       </div>
 
-      {/* ...остальной код чата (messages, settings, input-area)... */}
       <div className="main">
         <div className="chat-container">
           <div className="messages">
@@ -371,12 +364,10 @@ export default function App() {
     </>
   );
 
-  // 🔹 Если не авторизован — показываем AuthPage
   if (!isAuthenticated) {
     return <AuthPage onAuthenticated={handleAuthenticated} />;
   }
 
-  // 🔹 Если авторизован — показываем приложение
   return (
     <div className="app">
       {renderNav()}

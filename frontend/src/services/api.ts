@@ -1,5 +1,3 @@
-// frontend/src/services/api.ts
-
 import { authService } from './auth';
 import type { GenerateRequest, StreamMessage, DoneMessage } from '../types';
 
@@ -8,7 +6,6 @@ const API_BASE = '/api/v1';
 export class ApiClient {
   private abortController: AbortController | null = null;
 
-  // 🔹 Заголовки для JSON-запросов
   private getHeaders() {
     return authService.getAuthHeaders();
   }
@@ -27,13 +24,12 @@ export class ApiClient {
     try {
       const response = await fetch(`${API_BASE}${endpoint}`, {
         method: 'POST',
-        headers: this.getHeaders(),  // 🔹 С правильными заголовками
+        headers: this.getHeaders(),  
         body: JSON.stringify(request),
         signal: this.abortController.signal,
       });
 
       if (!response.ok) {
-        // Если сессия истекла — редирект на логин
         if (response.status === 401) {
           authService.logout();
           window.location.reload();
@@ -57,7 +53,6 @@ export class ApiClient {
         buffer = lines.pop() || '';
 
         for (const line of lines) {
-          // 🔹 Проверяем "data: " префикс для SSE
           if (line.startsWith('data: ')) {
             const data = line.slice(6).trim();
             

@@ -38,7 +38,6 @@ def _save_to_session(chat_id: str, role: str, content: str):
 
 
 def fix_lua_operators(code: str) -> str:
-    """Заменяет запрещённые в Lua операторы на валидные."""
     code = re.sub(r'(\w+)\s*\*=\s*(.+?)(?:\n|$)', r'\1 = \1 * \2\n', code)
     code = re.sub(r'(\w+)\s*\+=\s*(.+?)(?:\n|$)', r'\1 = \1 + \2\n', code)
     code = re.sub(r'(\w+)\s*-=\s*(.+?)(?:\n|$)', r'\1 = \1 - \2\n', code)
@@ -47,13 +46,6 @@ def fix_lua_operators(code: str) -> str:
 
 
 def fix_lua_code(code: str) -> str:
-    """
-    🔹 Исправляет распространённые ошибки в сгенерированном коде:
-    - Удаляет markdown блоки (```lua ... ```)
-    - Удаляет лишние 'end' в конце
-    - Добавляет недостающие 'end' для закрытия блоков
-    """
-    # 1. Удаляем markdown блоки
     code = re.sub(r'^```lua\s*', '', code, flags=re.MULTILINE)
     code = re.sub(r'^```\s*', '', code, flags=re.MULTILINE)
     code = re.sub(r'\s*```$', '', code, flags=re.MULTILINE)
@@ -62,8 +54,6 @@ def fix_lua_code(code: str) -> str:
     if not code:
         return code
     
-    # 2. Считаем открывающие и закрывающие блоки
-    # Открывающие: function, if, for, while, repeat
     opens = (
         len(re.findall(r'\bfunction\b', code)) +
         len(re.findall(r'\bif\b', code)) +
@@ -72,19 +62,15 @@ def fix_lua_code(code: str) -> str:
         len(re.findall(r'\brepeat\b', code))
     )
     
-    # Закрывающие: end, until
     closes = (
         len(re.findall(r'\bend\b', code)) +
         len(re.findall(r'\buntil\b', code))
     )
     
-    # 3. Удаляем лишние 'end' в конце (если нет соответствующих открывающих)
     while closes > opens and code.rstrip().endswith('end'):
-        # Удаляем последний 'end' с возможными пробелами/переносами
         code = re.sub(r'\s*end\s*$', '', code).strip()
         closes -= 1
     
-    # 4. Добавляем недостающие 'end'
     while opens > closes:
         code = code.rstrip() + '\nend'
         closes += 1
@@ -93,10 +79,6 @@ def fix_lua_code(code: str) -> str:
 
 
 def _should_use_rag(query: str, use_rag: Optional[bool]) -> bool:
-    """
-    🔹 Для хакатона: ВСЕГДА ищем в базе, кроме явного use_rag=False.
-    ChromaDB работает за ~0.1-0.3с, оверхед минимален.
-    """
     if use_rag is False:
         return False
     if use_rag is True:
@@ -122,9 +104,8 @@ async def generate_lua_with_rag(req: GenerateRequest, service: GenerationService
                 logger.warning(f"RAG error: {e}")
                 rag_chunks = [] 
         
-        # 🔹 Усиленный системный промпт
         system_prompt = (
-            "Ты эксперт по Lua 5.4. Пиши ТОЛЬКО рабочий, завершённый код.\n"
+            "Ты эксперт по Lua 5.5. Пиши ТОЛЬКО рабочий, завершённый код.\n"
             "КРИТИЧЕСКИ ВАЖНО:\n"
             "1. Если пишешь функцию — ВСЕГДА закрывай 'end'\n"
             "2. НЕ добавляй 'end' если нет function/if/for/while/repeat\n"
@@ -161,7 +142,6 @@ async def generate_lua_with_rag(req: GenerateRequest, service: GenerationService
         while attempts < max_attempts:
             attempts += 1
             ctx = 4096 if attempts == 1 else 2048
-            # 🔹 Увеличил num_predict для более длинных ответов
             pred = 512 if attempts == 1 else 600
             
             if attempts > 1 and error:
@@ -176,19 +156,16 @@ async def generate_lua_with_rag(req: GenerateRequest, service: GenerationService
                 if attempts == 1:
                     yield f"data: {json.dumps({'type': 'token', 'data': token}, ensure_ascii=False)}\n\n"
             
-            # 🔹 Извлекаем и чистим код
             raw_code = extract_code_block(full_response)
-            code = fix_lua_code(raw_code)  # ← ← ← Используем новый фиксер
-            logger.info(f"🔧 Код после фиксации: {len(code)} символов")
+            code = fix_lua_code(raw_code) 
+            logger.info(f"Код после фиксации: {len(code)} символов")
             
-            # 🔹 Улучшенная валидация
             code_stripped = code.strip()
             
             if not code_stripped:
                 is_valid = False
                 error = "Empty code"
             elif 'function' in code_stripped or 'if ' in code_stripped or 'for ' in code_stripped or 'while ' in code_stripped:
-                # Есть блоки — проверяем баланс
                 opens = (
                     len(re.findall(r'\bfunction\b', code_stripped)) +
                     len(re.findall(r'\bif\b', code_stripped)) +
@@ -208,35 +185,29 @@ async def generate_lua_with_rag(req: GenerateRequest, service: GenerationService
                     is_valid = False
                     error = f"Mismatched blocks: {opens} opens, {closes} closes"
             else:
-                # Просто код без блоков — валидно
                 is_valid = True
                 error = None
             
             if is_valid:
                 break
         
-        # 🔹 Sandbox с улучшенной логикой
         sandbox_result = None
         if req.run_test and is_valid and code.strip():
             try:
                 test_code = fix_lua_operators(code)
                 
-                # 🔹 Проверяем, есть ли функция для вызова
                 match = re.search(r'function\s+(\w+)\s*\(([^)]*)\)', test_code)
                 
                 if match:
-                    # Есть функция — вызываем её
                     func_name = match.group(1)
                     args_str = match.group(2).strip()
                     
-                    # Считаем аргументы
                     if not args_str:
                         arg_count = 0
                     else:
                         args = [a.strip() for a in args_str.split(',') if a.strip()]
                         arg_count = len(args)
                     
-                    # Генерируем тестовые аргументы
                     if arg_count == 0:
                         test_args = ""
                     elif arg_count == 1:
@@ -249,17 +220,15 @@ async def generate_lua_with_rag(req: GenerateRequest, service: GenerationService
                         test_args = ", ".join(str(i) for i in range(1, arg_count + 1))
                     
                     test_code = f"{test_code}\n\nprint({func_name}({test_args}))"
-                    logger.info(f"🧪 Тестовый вызов функции: {func_name}({test_args})")
+                    logger.info(f"Тестовый вызов функции: {func_name}({test_args})")
                 else:
-                    # Нет функции — просто проверяем синтаксис
-                    logger.info("🧪 Нет функции для вызова, проверяю синтаксис...")
+                    logger.info("Нет функции для вызова, проверяю синтаксис...")
                     test_code = f"{test_code}\n\n-- syntax check ok"
                 
                 sandbox_result = await asyncio.wait_for(
                     sandbox_service.execute(test_code, timeout=5), timeout=8.0
                 )
                 
-                # 🔹 Если ошибка компиляции — пробуем исправить
                 if not sandbox_result.success and 'expected near' in str(sandbox_result.error):
                     logger.warning(f"⚠️ Ошибка синтаксиса, пробую исправить...")
                     fixed_code = fix_lua_code(code)

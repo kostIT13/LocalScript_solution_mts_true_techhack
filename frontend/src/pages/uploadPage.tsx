@@ -58,7 +58,7 @@ export default function UploadPage() {
         await uploadApi.uploadDocument(file, (progressEvent) => {
           const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           setProgress(percent);
-          if (percent % 10 === 0) {  // Логируем каждые 10%
+          if (percent % 10 === 0) {
             console.log(`⏳ Прогресс загрузки ${file.name}: ${percent}%`);
           }
         });
@@ -74,7 +74,6 @@ export default function UploadPage() {
       console.log('🔄 Все файлы загружены, обновляем список...');
       setFiles([]);
       
-      // 🔹 ВАЖНО: Обновить список после загрузки
       await loadDocuments();
       
       console.log('✅ Загрузка завершена, документов всего:', documents.length);
@@ -142,7 +141,6 @@ export default function UploadPage() {
           </label>
         </div>
 
-        {/* 🔹 Список выбранных файлов */}
         {files.length > 0 && (
           <div className="selected-files">
             <h3>📋 Выбрано файлов: {files.length}</h3>
@@ -176,14 +174,12 @@ export default function UploadPage() {
           </div>
         )}
 
-        {/* 🔹 Сообщения */}
         {message && (
           <div className={`message ${message.type}`}>
             {message.text}
           </div>
         )}
 
-        {/* 🔹 Список загруженных документов */}
         <div className="documents-list">
           <h3>📚 Загруженные документы ({documents.length})</h3>
           {documents.length === 0 ? (

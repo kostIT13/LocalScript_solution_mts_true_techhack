@@ -249,9 +249,6 @@ body {
   font-style: italic;
 }
 
-/* frontend/src/index.css - добавь в конец */
-
-/* Mode Switcher */
 .mode-switcher {
   display: flex;
   gap: 0.5rem;
@@ -281,7 +278,6 @@ body {
   color: white;
 }
 
-/* Mode Indicator */
 .mode-indicator {
   padding: 0.75rem 2rem;
   background: #16213e;
@@ -300,7 +296,6 @@ body {
   color: #fbbf24;
 }
 
-/* Mode Info */
 .mode-info {
   margin-top: 1.5rem;
   padding: 1rem;
@@ -327,9 +322,6 @@ body {
   color: #fff;
 }
 
-/* frontend/src/index.css - добавь в конец */
-
-/* Main Navigation */
 .main-nav {
   display: flex;
   gap: 0.5rem;
@@ -360,7 +352,6 @@ body {
   color: white;
 }
 
-/* Upload Page */
 .upload-page {
   padding: 2rem;
   max-width: 1200px;
@@ -387,7 +378,6 @@ body {
   gap: 2rem;
 }
 
-/* Upload Zone */
 .upload-zone {
   border: 2px dashed #0f3460;
   border-radius: 12px;
@@ -438,7 +428,6 @@ body {
   color: #666;
 }
 
-/* Selected Files */
 .selected-files {
   background: #16213e;
   padding: 1.5rem;
@@ -521,7 +510,6 @@ body {
   transition: width 0.3s ease;
 }
 
-/* Messages */
 .message {
   padding: 1rem;
   border-radius: 8px;
@@ -540,7 +528,6 @@ body {
   border-left: 4px solid #ef4444;
 }
 
-/* Documents List */
 .documents-list {
   background: #16213e;
   padding: 1.5rem;
@@ -784,7 +771,6 @@ body {
   color: #4ade80;
 }
 
-/* Nav Right */
 .nav-right {
   display: flex;
   align-items: center;

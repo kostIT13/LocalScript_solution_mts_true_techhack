@@ -113,7 +113,7 @@ async def send_message_stream(data: ChatMessageRequest, chat: ChatDependency, se
 
             await service.add_message(
                 chat_id=chat.id, user_id=current_user.id, role="assistant",
-                content=generated_code or "⚠️ Не удалось сгенерировать",
+                content=generated_code or "Не удалось сгенерировать",
                 metadata_={
                     "sources": [c.filename for c in rag_chunks[:3]] if rag_chunks else [],
                     "validation_error": validation_error,

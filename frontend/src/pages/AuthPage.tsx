@@ -1,5 +1,3 @@
-// frontend/src/pages/AuthPage.tsx
-
 import React, { useState } from 'react';
 import { authService } from '../services/auth';
 import '../index.css';
@@ -107,12 +105,6 @@ export default function AuthPage({ onAuthenticated }: AuthPageProps) {
             {loading ? '⏳ Загрузка...' : isLogin ? '🔐 Войти' : '📝 Зарегистрироваться'}
           </button>
         </form>
-
-        <div className="auth-demo">
-          <p>🎭 <strong>Демо-доступ:</strong></p>
-          <p>Email: <code>demo@localscript.ai</code></p>
-          <p>Пароль: <code>demo123</code></p>
-        </div>
       </div>
     </div>
   );

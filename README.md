@@ -72,31 +72,50 @@ docker-compose up -d --build
 # Подождать ~30-60 секунд (инициализация БД + миграции)
 docker-compose logs -f  # опционально: следить за логами
 ```
-
-### 3️⃣ Загрузка модели (выполнить один раз)
+### 3️⃣ Запуск системы
 ```bash
-### 4️⃣ Загрузка моделей (выполнить один раз)
+# Запустите все сервисы
+docker-compose up -d --build
+```
+>⏱️ Первый запуск:
+>* Миграции применятся автоматически (~15 сек)
+>* Модели Ollama загрузятся автоматически (~3-10 мин, ~3.5 GB)
+>* Следите за прогрессом: docker-compose logs -f ollama
 
+>🔁 Повторные запуски:
+>* Модели уже в томе ollama_data — загрузка пропустится
+>* Система стартует за ~30 секунд
+
+### 4️⃣ Проверка работоспособности
+# Проверьте статус сервисов
 ```bash
-# 1. Загрузить модель для генерации кода (~3.2 GB)
-docker-compose exec ollama ollama pull qwen2.5-coder:1.5b
+docker-compose ps
 
-# 2. Загрузить модель для векторного поиска RAG (~270 MB)
-docker-compose exec ollama ollama pull nomic-embed-text
-
-# 3. Проверить, что обе модели загружены
-docker-compose exec ollama ollama list
 # Ожидаемо:
-# NAME                      ID              SIZE
-# qwen2.5-coder:1.5b       abc123...      ~3.2 GB
+# localscript_db       Up (healthy)
+# my_local_migrations  Exited (0)
+# localscript_ollama   Up
+# localscript_backend  Up
+# my_frontend          Up
 ```
 
-### 4️⃣ Открыть интерфейс
+### 5️⃣ Открытие веб-интерфейса
 ```bash
 🌐 Фронтенд: http://localhost:5173
 🔧 Swagger API: http://localhost:8080/docs
 📊 ChromaDB UI: http://localhost:8001
 🤖 Ollama API: http://localhost:11434
+```
+
+### 🐛 Устранение неполадок
+### ❌ "Model not found" в Ollama
+```bash
+# Проверить список моделей
+docker-compose exec ollama ollama list
+
+# Загрузить вручную (если авто-загрузка не сработала)
+docker-compose exec ollama ollama pull qwen2.5-coder:1.5b
+docker-compose exec ollama ollama pull nomic-embed-text
 ```
 
 ### Обязательно посмотрите настройки в .env.example
@@ -145,6 +164,10 @@ Email: user@example.com
 ### 3. Создайте первый запрос
 ```bash
 Задача: "Напиши функцию sum(a, b) которая возвращает a + b"
+```
+### 4. Обновляем чат
+```bash
+После каждого запроса генерации кода желательно создавать новый чат с помощью кнопки в верхнем правом углу
 ```
 ## 📋 Примеры использования
 **Основный эндпоинты:**
