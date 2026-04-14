@@ -12,6 +12,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(authService.getCachedUser());
   
   const [task, setTask] = useState('');
+  const [context, setContext] = useState('');  // 🔹 НОВОЕ: поле контекста
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatId, setChatId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -21,6 +22,7 @@ export default function App() {
   const [useRag, setUseRag] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [mode, setMode] = useState<'simple' | 'rag'>('simple');
+  const [contextError, setContextError] = useState('');  // 🔹 Ошибка валидации
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -36,6 +38,32 @@ export default function App() {
     setUseRag(mode === 'rag');
   }, [mode]);
 
+  // 🔹 Валидация JSON контекста
+  const validateContext = (jsonString: string): boolean => {
+    if (!jsonString.trim()) {
+      setContextError('');
+      return true;
+    }
+    try {
+      const parsed = JSON.parse(jsonString);
+      if (!parsed.wf || (!parsed.wf.vars && !parsed.wf.initVariables)) {
+        setContextError('⚠️ Должно быть wf.vars или wf.initVariables');
+        return false;
+      }
+      setContextError('');
+      return true;
+    } catch (e) {
+      setContextError('❌ Ошибка JSON');
+      return false;
+    }
+  };
+
+  const handleContextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setContext(value);
+    validateContext(value);
+  };
+
   const handleAuthenticated = () => {
     setIsAuthenticated(true);
     setCurrentUser(authService.getCachedUser());
@@ -50,6 +78,12 @@ export default function App() {
   const handleGenerate = async () => {
     if (!task.trim() && !feedback.trim()) return;
     if (isLoading) return;
+
+    // 🔹 Проверка контекста
+    if (context && !validateContext(context)) {
+      alert('Исправьте ошибки в контексте');
+      return;
+    }
 
     setIsLoading(true);
     setCurrentCode('');
@@ -72,6 +106,16 @@ export default function App() {
 
     setMessages(prev => [...prev, userMessage, assistantMessage]);
 
+    // 🔹 Парсим контекст
+    let contextObj = null;
+    if (context.trim()) {
+      try {
+        contextObj = JSON.parse(context);
+      } catch (e) {
+        console.error('Invalid context:', e);
+      }
+    }
+
     await apiClient.generateLua(
       {
         task: task || 'Продолжи предыдущий код',
@@ -81,6 +125,7 @@ export default function App() {
         use_rag: useRag,
         chat_id: chatId,
         feedback: isFeedback ? feedback : null,
+        context: contextObj,  // 🔹 Передаём контекст
       },
       (token) => {
         setCurrentCode(prev => prev + token);
@@ -151,6 +196,8 @@ export default function App() {
     setMessages([]);
     setFeedback('');
     setTask('');
+    setContext('');  // 🔹 Очищаем контекст
+    setContextError('');
   };
 
   const canShowFeedback = messages.some(m => m.role === 'assistant' && m.code);
@@ -348,18 +395,38 @@ export default function App() {
         </aside>
       </div>
 
-      <div className="input-area">
-        <input
-          type="text"
-          value={task}
-          onChange={(e) => setTask(e.target.value)}
-          placeholder="Опишите задачу на естественном языке..."
-          onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
-          disabled={isLoading}
-        />
-        <button onClick={handleGenerate} disabled={isLoading || (!task.trim() && !feedback.trim())}>
+      {/* 🔹 ОБНОВЛЁННАЯ: Область ввода с контекстом */}
+      <div className="input-area-with-context">
+        <div className="input-section">
+          <input
+            type="text"
+            value={task}
+            onChange={(e) => setTask(e.target.value)}
+            placeholder="Опишите задачу на естественном языке..."
+            onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
+            disabled={isLoading}
+            className="task-input"
+          />
+          <textarea
+            value={context}
+            onChange={handleContextChange}
+            placeholder='{"wf":{"vars":{"emails":["a@x.com"]}}}'
+            rows={2}
+            disabled={isLoading}
+            className="context-input"
+            title="Контекст схемы (JSON)"
+          />
+        </div>
+        <button 
+          onClick={handleGenerate} 
+          disabled={isLoading || (!task.trim() && !feedback.trim())}
+          className="generate-btn"
+        >
           {isLoading ? '⏳ Генерация...' : `🚀 Генерировать ${mode === 'rag' ? '(RAG)' : ''}`}
         </button>
+        {contextError && (
+          <div className="context-error-below">{contextError}</div>
+        )}
       </div>
     </>
   );

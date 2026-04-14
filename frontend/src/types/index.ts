@@ -6,6 +6,7 @@ export interface GenerateRequest {
   chat_id?: string | null;
   feedback?: string | null;
   use_rag?: boolean | null;
+  context?: Record<string, any> | null;
 }
 
 export interface TokenMessage {
