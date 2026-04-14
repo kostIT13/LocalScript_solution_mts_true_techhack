@@ -12,7 +12,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(authService.getCachedUser());
   
   const [task, setTask] = useState('');
-  const [context, setContext] = useState('');  // 🔹 НОВОЕ: поле контекста
+  const [context, setContext] = useState('');  
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatId, setChatId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -22,7 +22,7 @@ export default function App() {
   const [useRag, setUseRag] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [mode, setMode] = useState<'simple' | 'rag'>('simple');
-  const [contextError, setContextError] = useState('');  // 🔹 Ошибка валидации
+  const [contextError, setContextError] = useState('');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -38,7 +38,6 @@ export default function App() {
     setUseRag(mode === 'rag');
   }, [mode]);
 
-  // 🔹 Валидация JSON контекста
   const validateContext = (jsonString: string): boolean => {
     if (!jsonString.trim()) {
       setContextError('');
@@ -53,7 +52,7 @@ export default function App() {
       setContextError('');
       return true;
     } catch (e) {
-      setContextError('❌ Ошибка JSON');
+      setContextError('Ошибка JSON');
       return false;
     }
   };
@@ -79,7 +78,6 @@ export default function App() {
     if (!task.trim() && !feedback.trim()) return;
     if (isLoading) return;
 
-    // 🔹 Проверка контекста
     if (context && !validateContext(context)) {
       alert('Исправьте ошибки в контексте');
       return;
@@ -106,7 +104,6 @@ export default function App() {
 
     setMessages(prev => [...prev, userMessage, assistantMessage]);
 
-    // 🔹 Парсим контекст
     let contextObj = null;
     if (context.trim()) {
       try {
@@ -125,7 +122,7 @@ export default function App() {
         use_rag: useRag,
         chat_id: chatId,
         feedback: isFeedback ? feedback : null,
-        context: contextObj,  // 🔹 Передаём контекст
+        context: contextObj,  
       },
       (token) => {
         setCurrentCode(prev => prev + token);
@@ -196,7 +193,7 @@ export default function App() {
     setMessages([]);
     setFeedback('');
     setTask('');
-    setContext('');  // 🔹 Очищаем контекст
+    setContext('');
     setContextError('');
   };
 
@@ -395,7 +392,6 @@ export default function App() {
         </aside>
       </div>
 
-      {/* 🔹 ОБНОВЛЁННАЯ: Область ввода с контекстом */}
       <div className="input-area-with-context">
         <div className="input-section">
           <input
