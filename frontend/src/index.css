@@ -872,7 +872,6 @@ body {
   margin-top: 0.3rem;
 }
 
-/* 🔹 Новая структура ввода с контекстом */
 .input-area-with-context {
   display: flex;
   flex-direction: column;
