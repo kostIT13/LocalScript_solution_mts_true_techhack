@@ -249,7 +249,7 @@ local person = {
 │         ▼                                               │
 │  ┌─────────────┐                                        │
 │  │   Backend   │  FastAPI + Python 3.12                 │ 
-│  │   (8000)    │  • Auth (JWT)                          │
+│  │   (8080)    │  • Auth (JWT)                          │
 │  │             │  • Generation API                      │
 │  │             │  • RAG API                             │
 │  │             │  • Sandbox API                         │
