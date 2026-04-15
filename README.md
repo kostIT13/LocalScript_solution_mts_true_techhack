@@ -488,3 +488,6 @@ LocalScript/
 Проект создан для **TrueTech Hackathon 2026** (MTS True Tech).  
 Спасибо организаторам за поддержку!
 
+
+
+
