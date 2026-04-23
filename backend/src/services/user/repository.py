@@ -15,6 +15,7 @@ class SQLAlchemyUserRepository(UserRepository):
         result = await self.session.execute(query)
         return result.scalar_one_or_none() 
 
+
     async def get_all(self, **filters) -> List[User]:
         query = select(User)
         for field, value in filters.items():
